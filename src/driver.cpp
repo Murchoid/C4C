@@ -2,8 +2,10 @@
 #include "front_end/include/string_to_file.hpp"
 #include "front_end/include/lexer.hpp"
 #include "front_end/include/parser.hpp"
-#include "middle_end/tac/include/ast_to_tac.hpp"
+#include "front_end/include/identifier_resolution.hpp"
 
+
+#include "middle_end/tac/include/ast_to_tac.hpp"
 #include "back_end/x86_64/include/tac_to_intel64.hpp"
 #include "back_end/x86_64/include/pseudo.hpp"
 #include "back_end/x86_64/include/fixup.hpp"
@@ -31,8 +33,10 @@ int main(int argc,char *argv[])
 		parser.parse_program();
 		DEBUG_PRINT("sanity check : ", " after parser ");
 		//arena.reset();
+
+		IdentifierResolution resolve(file_name,parser.program);
 		
-		AstToTac tac(file_name,parser.program,&arena);
+		AstToTac tac(file_name,resolve.program,&arena,resolve.global_counter);
 
 		DEBUG_PRINT("sanity check : ", " after ast to tac ");
 		TacToIntel64 intel(file_name,tac.program,&arena);

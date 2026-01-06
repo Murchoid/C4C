@@ -18,13 +18,14 @@ public:
 	std::string global_label;
 	int global_counter = 0;
 
-	AstToTac(std::string file_name,ASTProgram *ast_program,Arena *arena)
+	AstToTac(std::string file_name,ASTProgram *ast_program,Arena *arena,int global_counter)
 	{
 		this->file_name = file_name;
 		this->ast_program = ast_program;
 		this->arena = arena;
 		this->global_ident = "c4_tmp";
 		this->global_label = "__c4_label";
+		this->global_counter = global_counter;
 
 		void *mem = alloc(sizeof(TACProgram));
 		this->program = new(mem) TACProgram();
@@ -97,12 +98,39 @@ public:
 				convert_return_stmt((ASTReturnStmt *)stmt->stmt);
 				break;
 			}
+			case ASTStatementType::IF:
+			{
+				convert_if_stmt((ASTReturnStmt *)stmt->stmt);
+				break;
+			}
+			case ASTStatementType::VARDECL:
+			{
+				convert_vardecl_stmt((ASTVarDecl *)stmt->stmt);
+				break;
+			}
 			case ASTStatementType::EXPR:
 			{
 				convert_expr((ASTExpression *)stmt->stmt);
 				break;
 			}
 		}
+	}
+
+	void convert_vardecl_stmt(ASTVarDecl *stmt)
+	{
+		TACValue *tac_src = convert_expr(stmt->expr);
+
+		void *mem = alloc(sizeof(TACVariable));
+		TACVariable *tac_var = new(mem) TACVariable(stmt->ident);
+
+		mem = alloc(sizeof(TACValue));
+		TACValue *tac_dst = new(mem)TACValue(TACValueType::VARIABLE,tac_var);
+
+		mem = alloc(sizeof(TACCopyInst));
+		TACCopyInst *tac_copy = new(mem) TACCopyInst(tac_dst,tac_src);
+
+		mem = alloc(sizeof(TACInstruction));
+		this->inst->push_back(new(mem) TACInstruction(TACInstructionType::COPY,tac_copy));
 	}
 	
 	void convert_return_stmt(ASTReturnStmt *stmt)
@@ -125,6 +153,16 @@ public:
 				value = convert_i32_expr(expr->expr);
 				break;
 			}
+			case ASTExpressionType::VARIABLE:
+			{
+				value = convert_variable_expr(expr->expr);
+				break;
+			}
+			case ASTExpressionType::ASSIGN:
+			{
+				value = convert_assign_expr(expr->expr);
+				break;
+			}
 			case ASTExpressionType::UNARY:
 			{
 				value = convert_unary_expr(expr->expr);
@@ -145,6 +183,38 @@ public:
 	}
 
 
+
+	TACValue *convert_variable_expr(void *expr)
+	{
+		ASTVariableExpr *var_expr = (ASTVariableExpr *)expr;
+
+		void *mem = alloc(sizeof(TACVariable));
+		TACVariable *tac_var = new(mem) TACVariable(var_expr->ident);
+
+		mem = alloc(sizeof(TACValue));
+		TACValue *tac_dst = new(mem)TACValue(TACValueType::VARIABLE,tac_var);
+
+		return tac_dst;
+
+	}
+
+
+	TACValue *convert_assign_expr(void *expr)
+	{
+		ASTAssignExpr *assign_expr = (ASTAssignExpr *)expr;
+		TACValue *tac_dst = convert_expr(assign_expr->lhs);
+		TACValue *tac_src = convert_expr(assign_expr->rhs);
+
+		void *mem = alloc(sizeof(TACCopyInst));
+		TACCopyInst *tac_copy = new(mem) TACCopyInst(tac_dst,tac_src);
+
+		mem = alloc(sizeof(TACInstruction));
+		this->inst->push_back(new(mem) TACInstruction(TACInstructionType::COPY,tac_copy));
+
+		return tac_dst;
+	}
+	
+	
 
 	TACValue *convert_binary_expr(void *expr)
 	{

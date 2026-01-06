@@ -868,7 +868,7 @@ public:
 
 	bool is_binary()
 	{
-		return is_token("-") or is_token("+") or is_token("*") or is_token("%") or is_token("/") or is_token("<") or is_token(">") or is_token("<=") or is_token(">=") or is_token("||") or is_token("&&");
+		return is_token("-") or is_token("+") or is_token("*") or is_token("%") or is_token("/") or is_token("<") or is_token(">") or is_token("<=") or is_token(">=") or is_token("||") or is_token("&&")  or is_token("=");
 	}
 
 	ASTAssignOperator get_assign_op(Tokens token)
@@ -1112,7 +1112,7 @@ public:
 			{
 				void *mem = alloc(sizeof(ASTVariableExpr));
 				ASTVariableExpr *expr1 = new(mem) ASTVariableExpr(consume().string);
-				
+				DEBUG_PRINT(" parser : ",expr1->ident);
 				mem = alloc(sizeof(ASTExpression));
 				expr = new(mem) ASTExpression(ASTExpressionType::VARIABLE,expr1);
 			}
