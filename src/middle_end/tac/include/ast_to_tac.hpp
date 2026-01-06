@@ -103,6 +103,21 @@ public:
 				convert_if_stmt((ASTIfStmt *)stmt->stmt);
 				break;
 			}
+			case ASTStatementType::WHILE:
+			{
+				convert_while_stmt((ASTWhileStmt *)stmt->stmt);
+				break;
+			}
+			case ASTStatementType::BREAK:
+			{
+				convert_break_stmt((ASTBreakStmt *)stmt->stmt);
+				break;
+			}
+			case ASTStatementType::CONTINUE:
+			{
+				convert_continue_stmt((ASTContinueStmt *)stmt->stmt);
+				break;
+			}
 			case ASTStatementType::VARDECL:
 			{
 				convert_vardecl_stmt((ASTVarDecl *)stmt->stmt);
@@ -115,6 +130,74 @@ public:
 			}
 		}
 	}
+
+
+	void convert_break_stmt(ASTBreakStmt *stmt)
+	{
+		std::string break_label_name = "break" + stmt->label;
+
+	
+		void *mem = alloc(sizeof(TACJmpInst));
+		TACJmpInst *tac_jmp = new(mem) TACJmpInst(break_label_name);
+
+		mem = alloc(sizeof(TACInstruction));
+		this->inst->push_back(new(mem) TACInstruction(TACInstructionType::JMP,tac_jmp));
+
+	}
+
+	void convert_continue_stmt(ASTContinueStmt *stmt)
+	{
+		std::string continue_label_name = "continue" + stmt->label;
+
+	
+		void *mem = alloc(sizeof(TACJmpInst));
+		TACJmpInst *tac_jmp = new(mem) TACJmpInst(continue_label_name);
+
+		mem = alloc(sizeof(TACInstruction));
+		this->inst->push_back(new(mem) TACInstruction(TACInstructionType::JMP,tac_jmp));
+
+	}
+
+
+	void convert_while_stmt(ASTWhileStmt *stmt)
+	{
+		std::string continue_label_name = "continue" + stmt->label;
+
+		void *mem = alloc(sizeof(TACLabelInst));
+		TACLabelInst *tac_label = new(mem) TACLabelInst(continue_label_name);
+
+		mem = alloc(sizeof(TACInstruction));
+		this->inst->push_back(new(mem) TACInstruction(TACInstructionType::LABEL,tac_label));
+
+		std::string break_label_name = "break" + stmt->label;
+
+
+		TACValue *tac_expr = convert_expr(stmt->expr);
+		
+		mem = alloc(sizeof(TACJmpIfZeroInst));
+		TACJmpIfZeroInst *tac_jz = new(mem) TACJmpIfZeroInst(tac_expr,break_label_name);
+
+		mem = alloc(sizeof(TACInstruction));
+		this->inst->push_back(new(mem) TACInstruction(TACInstructionType::JMP_ZERO,tac_jz));
+
+		convert_block_stmt(stmt->block);
+
+
+		mem = alloc(sizeof(TACJmpInst));
+		TACJmpInst *tac_jmp = new(mem) TACJmpInst(continue_label_name);
+
+		mem = alloc(sizeof(TACInstruction));
+		this->inst->push_back(new(mem) TACInstruction(TACInstructionType::JMP,tac_jmp));
+
+
+		mem = alloc(sizeof(TACLabelInst));
+		tac_label = new(mem) TACLabelInst(break_label_name);
+
+		mem = alloc(sizeof(TACInstruction));
+		this->inst->push_back(new(mem) TACInstruction(TACInstructionType::LABEL,tac_label));
+
+	}
+
 
 	void convert_if_stmt(ASTIfStmt *stmt)
 	{

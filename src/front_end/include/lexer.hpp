@@ -254,6 +254,10 @@ private:
 		{
 			add_token(TokenType::TOKEN_KEYWORD_IF,buf);
 		}
+		else if (match_keyword(buf,"loop"))
+		{
+			add_token(TokenType::TOKEN_KEYWORD_LOOP,buf);
+		}
 		else if (match_keyword(buf,"native"))
 		{
 			add_token(TokenType::TOKEN_KEYWORD_NATIVE,buf);

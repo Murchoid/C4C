@@ -9,9 +9,11 @@ class MapEntry
 {
 public:
     std::string name;
-    MapEntry(std::string name)
+    bool current = true;
+    MapEntry(std::string name,bool current = true)
     {
         this->name = name;
+        this->current = current;
     }
 };
 
@@ -40,6 +42,13 @@ public:
     std::string get_name(std::string name)
     {
         return this->map.at(name).name;
+        //return this->map[name].name;
+    }
+
+
+    bool get_current(std::string name)
+    {
+        return this->map.at(name).current;
         //return this->map[name].name;
     }
 };
@@ -89,6 +98,19 @@ public:
     }
 
 
+    Map copy_ident_map(Map *ident_map)
+    {
+        Map new_ident_map = *ident_map;
+
+        for (auto it = new_ident_map.map.begin(); it != new_ident_map.map.end(); ++it)
+        {
+            it->second.current = false;   
+        }
+
+        return new_ident_map;
+    }
+
+
     void resolve_function(ASTFunctionDecl *decl,Map *ident_map)
     {
         resolve_block_stmt(decl->block,ident_map);
@@ -99,9 +121,10 @@ public:
     void resolve_block_stmt(ASTBlockStmt *block,Map *ident_map)
 	{
 
+        Map new_ident_map = copy_ident_map(ident_map);
 		for (ASTStatement *stmt : block->stmts)
 		{
-			resolve_stmt(stmt,ident_map);
+			resolve_stmt(stmt,&new_ident_map);
 		}
 	}
 
@@ -119,6 +142,11 @@ public:
                 resolve_if_stmt((ASTIfStmt *)stmt->stmt,ident_map);
 				break;
 			}
+            case ASTStatementType::WHILE:
+			{
+                resolve_while_stmt((ASTWhileStmt *)stmt->stmt,ident_map);
+				break;
+			}
             case ASTStatementType::VARDECL:
 			{
                 resolve_vardecl_stmt((ASTVarDecl *)stmt->stmt,ident_map);
@@ -134,14 +162,14 @@ public:
 
     void resolve_vardecl_stmt(ASTVarDecl *decl,Map *ident_map)
     {
-        if (ident_map->lookup(decl->ident))
+        if (ident_map->lookup(decl->ident) and ident_map->get_current(decl->ident))
         {
             fatal("redeclared variable " + decl->ident);
         }
         else
         {
             std::string tmp_name = make_tmp(decl->ident + "_");
-            ident_map->add(decl->ident,MapEntry(tmp_name));
+            ident_map->add(decl->ident,MapEntry(tmp_name,true));
 
             if (decl->expr != nullptr)
             {
@@ -155,6 +183,13 @@ public:
         }
     }
 
+
+
+    void resolve_while_stmt(ASTWhileStmt *stmt,Map *ident_map)
+    {
+        resolve_expr(stmt->expr,ident_map);
+        resolve_block_stmt(stmt->block,ident_map);
+    }
 
     
 

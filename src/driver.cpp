@@ -3,6 +3,8 @@
 #include "front_end/include/lexer.hpp"
 #include "front_end/include/parser.hpp"
 #include "front_end/include/identifier_resolution.hpp"
+#include "front_end/include/loop_labelling.hpp"
+
 
 
 #include "middle_end/tac/include/ast_to_tac.hpp"
@@ -36,7 +38,10 @@ int main(int argc,char *argv[])
 
 		IdentifierResolution resolve(file_name,parser.program);
 		
-		AstToTac tac(file_name,resolve.program,&arena,resolve.global_counter);
+		LoopLabelling loop_label(file_name,resolve.program,resolve.global_counter);
+
+
+		AstToTac tac(file_name,loop_label.program,&arena,loop_label.global_counter);
 
 		DEBUG_PRINT("sanity check : ", " after ast to tac ");
 		TacToIntel64 intel(file_name,tac.program,&arena);
