@@ -13,11 +13,13 @@ public:
 	int stack_counter = 0;
 	std::map<std::string,int> table;
 	Arena *arena;
-	Pseudo(std::string file_name,ASMProgram *program,Arena *arena)
+	SymbolTable symbol_table;
+	Pseudo(std::string file_name,ASMProgram *program,Arena *arena,SymbolTable symbol_table)
 	{
 		this->file_name = file_name;
 		this->program = program;
 		this->arena = arena;
+		this->symbol_table = symbol_table;
 
 		for(ASMDeclaration *decl : this->program->decls)
 		{
@@ -147,17 +149,30 @@ public:
 				ASMPseudo *asm_pseudo = (ASMPseudo *)operand->operand;
 				std::string key = asm_pseudo->ident;
 
-				void *mem = alloc(sizeof(ASMStack));
+				
 				if (this->table.find(key) == this->table.end())
 				{
-					this->stack_counter += 1;
-					this->table[key] = this->stack_counter;
-					ASMStack *asm_stack = new(mem) ASMStack(4,"rbp",this->stack_counter * 4);
-					operand->type = ASMOperandType::STACK;
-					operand->operand = asm_stack;
+					std::cout << " key : " << key<< std::endl;
+					if(this->symbol_table.lookup(key) and this->symbol_table.get(key).global)
+					{
+						void *mem = alloc(sizeof(ASMData));
+						ASMData *asm_data = new(mem) ASMData(4,key);
+						operand->type = ASMOperandType::DATA;
+						operand->operand = asm_data;	
+					}
+					else
+					{
+						void *mem = alloc(sizeof(ASMStack));
+						this->stack_counter += 1;
+						this->table[key] = this->stack_counter;
+						ASMStack *asm_stack = new(mem) ASMStack(4,"rbp",this->stack_counter * 4);
+						operand->type = ASMOperandType::STACK;
+						operand->operand = asm_stack;
+					}
 				}
 				else
 				{
+					void *mem = alloc(sizeof(ASMStack));
 					int tmp_stack_counter = this->table[key];
 					ASMStack *asm_stack = new(mem) ASMStack(4,"rbp",tmp_stack_counter * 4);
 					operand->type = ASMOperandType::STACK;

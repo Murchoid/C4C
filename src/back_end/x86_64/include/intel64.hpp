@@ -18,6 +18,7 @@ enum class ASMInstructionType
 	JMP,
 	JMP_COND,
 	LABEL,
+	CALL,
 };
 
 #include "../../include/asm_ast.hpp"
@@ -31,6 +32,7 @@ enum class ASMOperandType
 	STACK,
 	IMMEDIATE,
 	PSEUDO,
+	DATA,
 };
 
 enum class ASMRegisterType
@@ -63,7 +65,6 @@ public:
 	{
 		this->type = type;
 		this->size = size;
-		DEBUG_PRINT("in constructor " + std::to_string(size), "  =>  " + std::to_string(this->size));
 	}
 };
 
@@ -111,6 +112,23 @@ public:
 		this->ident = ident;
 	}
 };
+
+
+
+
+class ASMData
+{
+public:
+	int size = 0;
+	std::string address;
+	
+	ASMData(int size,std::string address)	
+	{
+		this->size = size;
+		this->address = address;
+	}
+};
+
 
 
 class ASMOperand
@@ -206,6 +224,21 @@ public:
 		this->label = label;
 	}
 };
+
+
+
+
+
+class ASMCallInst
+{
+public:
+	std::string label;
+	ASMCallInst(std::string label)
+	{
+		this->label = label;
+	}
+};
+
 
 
 

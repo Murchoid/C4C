@@ -45,6 +45,10 @@ public:
 		{
 			return TokenType::TOKEN_KEYWORD_BREAK;
 		}
+		else if (keyword == "cast")
+		{
+			return TokenType::TOKEN_KEYWORD_CAST;
+		}
 		else if (keyword == "continue")
 		{
 			return TokenType::TOKEN_KEYWORD_CONTINUE;
@@ -64,6 +68,10 @@ public:
 		else if (keyword == "i32")
 		{
 			return TokenType::TOKEN_KEYWORD_I32;
+		}
+		else if (keyword == "i64")
+		{
+			return TokenType::TOKEN_KEYWORD_I64;
 		}
 		else if (keyword == "native")
 		{
@@ -371,13 +379,32 @@ public:
 
 		switch (token.type)
 		{
+			case TokenType::TOKEN_KEYWORD_EXTERN:
+			{
+				consume();
+				if (match_type())
+				{
+					ASTVarDecl *decl_val = parse_vardecl(false,false,true);
+					decl = new(mem) ASTDeclaration(ASTDeclarationType::VARDECL,decl_val);
+				}
+				else
+				{
+					fatal(" invalid use of 'pub' in " + (*(peek())).get_type());
+				}
+				break;
+			}
 			case TokenType::TOKEN_KEYWORD_PUB:
 			{
 				consume();
 				if (match_keyword("fn"))
 				{
-					ASTFunctionDecl *decl_val1 = parse_fn_decl(true);
-					decl = new(mem) ASTDeclaration(ASTDeclarationType::FUNCTION,decl_val1);
+					ASTFunctionDecl *decl_val = parse_fn_decl(true);
+					decl = new(mem) ASTDeclaration(ASTDeclarationType::FUNCTION,decl_val);
+				}
+				else if (match_type())
+				{
+					ASTVarDecl *decl_val = parse_vardecl(true);
+					decl = new(mem) ASTDeclaration(ASTDeclarationType::VARDECL,decl_val);
 				}
 				else
 				{
@@ -406,7 +433,7 @@ public:
 			{
 				if (match_type())
 				{
-					ASTVarDecl *decl_val4 = parse_vardecl();
+					ASTVarDecl *decl_val4 = parse_vardecl(false,true,false);
 					decl = new(mem) ASTDeclaration(ASTDeclarationType::VARDECL,decl_val4);
 				}
 				else
@@ -562,6 +589,11 @@ public:
 				data_type = ASTDataType::I32;
 				consume();
 			}
+			if (is_token_string("i64"))
+			{
+				data_type = ASTDataType::I64;
+				consume();
+			}
 			else
 			{
 				DEBUG_PRINT("  sanity check ",(*(peek())).get_type());
@@ -658,6 +690,16 @@ public:
 				stmt = new(mem) ASTStatement(stmt_type,stmt_stmt);
 				break;
 			}
+			case TokenType::TOKEN_KEYWORD_STATIC:
+			{
+				consume();
+				if (match_type())
+				{
+					ASTStatementType stmt_type = ASTStatementType::VARDECL;
+					ASTVarDecl *stmt_stmt = parse_vardecl(false,true);
+					stmt = new(mem) ASTStatement(stmt_type,stmt_stmt);
+				}
+			}
 			default:
 			{
 				if (match_type())
@@ -683,21 +725,30 @@ public:
 		return stmt;
 	}
 
-	ASTVarDecl *parse_vardecl()
+	ASTVarDecl *parse_vardecl(bool is_public = false,bool is_static = false,bool is_extern = false)
 	{
 		ASTType *type = parse_type();
 		std::string ident;
+
+		if (is_public && is_static)
+		{
+			fatal("a public variable cannot be static ");
+		}
 
 		if (match_identifier())
 		{
 			ident = consume().string;
 		}
 
-		expect_symbol("=");
-		ASTExpression *expr = parse_expr(0);
+		ASTExpression *expr = nullptr;
+		if (is_extern == false)
+		{
+			expect_symbol("=");
+			expr = parse_expr(0);
+		}
 
 		void *mem = alloc(sizeof(ASTVarDecl));
-		ASTVarDecl *decl = new(mem) ASTVarDecl(type,ident,expr);
+		ASTVarDecl *decl = new(mem) ASTVarDecl(type,ident,expr,is_public,is_static,is_extern);
 
 		return decl;
 	}
@@ -1012,7 +1063,6 @@ public:
 
 			if (is_token("="))
 			{
-				DEBUG_PRINT(" should not happen ","assign");
 				Tokens op = consume();
 				ASTExpression *rhs = parse_expr(prec);
 				void *mem = alloc(sizeof(ASTAssignExpr));
@@ -1030,7 +1080,6 @@ public:
 				mem = alloc(sizeof(ASTExpression));
 				ASTExpression *tmp_lhs = new(mem) ASTExpression(ASTExpressionType::BINARY,binary_expr);
 				lhs = tmp_lhs;
-				DEBUG_PRINT(" $$$$$$$$$$$$$$$$$$     ",op.string);
 			}
 		}
 
@@ -1054,14 +1103,15 @@ public:
 			if (num > (std::pow(2,31) - 1))
 			{
 				void *mem = alloc(sizeof(ASTI64Expr));
-				ASTI64Expr *i64_expr = new(mem) ASTI64Expr(std::stoi(token.string));
+				ASTI64Expr *i64_expr = new(mem) ASTI64Expr(num);
 				mem = alloc(sizeof(ASTExpression));
 				expr = new(mem) ASTExpression(ASTExpressionType::I64,i64_expr);
 			}
 			else
 			{
 				void *mem = alloc(sizeof(ASTI32Expr));
-				ASTI32Expr *i32_expr = new(mem) ASTI32Expr(std::stoi(token.string));
+				ASTI32Expr *i32_expr = new(mem) ASTI32Expr(num);
+				std::cout << " parser i32_expr : " << i32_expr->value << std::endl;
 				mem = alloc(sizeof(ASTExpression));
 				expr = new(mem) ASTExpression(ASTExpressionType::I32,i32_expr);
 			}
@@ -1074,6 +1124,46 @@ public:
 			ASTUnaryExpr *expr1 = new(mem) ASTUnaryExpr(op,parse_factor());
 			mem = alloc(sizeof(ASTExpression));
 			expr = new(mem) ASTExpression(ASTExpressionType::UNARY,expr1);
+		}
+		else if (is_token_string("cast"))
+		{
+			expect_keyword("cast");
+			expect_symbol("<");
+			ASTDataType data_type;
+
+			if (match_type())
+			{
+				if (is_token_string("i32"))
+				{
+					data_type = ASTDataType::I32;
+					consume();
+				}
+				else if (is_token_string("i64"))
+				{
+					data_type = ASTDataType::I64;
+					consume();
+				}
+				else
+				{
+					DEBUG_PRINT("  sanity check ",(*(peek())).get_type());
+				}
+			}
+			else
+			{
+				fatal("unsupported types ");
+			}
+
+			expect_symbol(">");
+			expect_symbol("(");
+			ASTExpression *expr1 = parse_expr(0);
+			expect_symbol(")");
+
+			void *mem = alloc(sizeof(ASTCastExpr));
+			ASTCastExpr *expr2 = new(mem) ASTCastExpr(data_type,expr1);
+
+			mem = alloc(sizeof(ASTExpression));
+			expr = new(mem) ASTExpression(ASTExpressionType::CAST,expr2);
+
 		}
 		else if(is_token("("))
 		{
@@ -1112,7 +1202,6 @@ public:
 			{
 				void *mem = alloc(sizeof(ASTVariableExpr));
 				ASTVariableExpr *expr1 = new(mem) ASTVariableExpr(consume().string);
-				DEBUG_PRINT(" parser : ",expr1->ident);
 				mem = alloc(sizeof(ASTExpression));
 				expr = new(mem) ASTExpression(ASTExpressionType::VARIABLE,expr1);
 			}

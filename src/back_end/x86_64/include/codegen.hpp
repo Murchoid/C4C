@@ -8,7 +8,9 @@ class Codegen
 public:
 	std::string file_name;
 	ASMProgram *program;
-	std::string string;
+	std::string string = "\n\nsection  .text\n\n";
+	std::string data_string;
+	bool data = false;
 	
 	Codegen(std::string file_name,ASMProgram *program)
 	{
@@ -23,8 +25,14 @@ public:
 			}
 			gen_decl(decl);
 		}
-		
-		DEBUG_PRINT(" ASM \n\n",this->string);
+	
+		this->string = this->data_string + this->string;
+		//DEBUG_PRINT(" ASM \n\n",this->string);
+	}
+
+	void write_data(std::string string)
+	{
+		this->data_string += string;
 	}
 
 	void write_body(std::string string)
@@ -41,10 +49,37 @@ public:
 				gen_function((ASMFunction *)decl->decl);
 				break;
 			}
+			case ASMDeclarationType::VARDECL:
+			{
+				gen_global_vardecl((ASMGlobalVariable *)decl->decl);
+				break;
+			}
 		}
 
 	}
 
+
+	void gen_global_vardecl(ASMGlobalVariable *decl)
+	{
+		if (this->data == false)
+		{
+			write_data("\nsection .data\n");
+		}
+
+		switch (decl->data_type)
+		{
+			case ASMType::I32:
+			{
+				write_data("\t" + decl->ident + " dd " + std::to_string(*((int *)decl->data)) + "\n");
+				break;
+			}
+			case ASMType::I64:
+			{
+				write_data("\t" + decl->ident + " dq " + std::to_string(*((long int *)decl->data)) + "\n");
+				break;
+			}
+		}
+	}
 
 	void gen_function(ASMFunction *decl)
 	{	
@@ -115,6 +150,11 @@ public:
 				gen_cmp_inst((ASMCmpInst *)inst->instruction);
 				break;
 			}
+			case ASMInstructionType::CALL:
+			{
+				gen_call_inst((ASMCallInst *)inst->instruction);
+				break;
+			}
 			case ASMInstructionType::JMP:
 			{
 				gen_jmp_inst((ASMJmpInst *)inst->instruction);
@@ -176,6 +216,13 @@ public:
 		
 	}
 	
+
+	void gen_call_inst(ASMCallInst *inst)
+	{
+		write_body("\tcall " + inst->label + "\n");
+	}
+
+
 
 	void gen_jmp_inst(ASMJmpInst *inst)
 	{
@@ -341,6 +388,12 @@ public:
 				gen_stack(asm_stack,size);
 				break;
 			}
+			case ASMOperandType::DATA:
+			{
+				ASMData *asm_data = (ASMData *)operand->operand;
+				gen_data(asm_data,size);
+				break;
+			}
 			default:
 			{
 			}
@@ -348,6 +401,31 @@ public:
 
 		return;
 	}
+
+
+	void gen_data(ASMData *asm_data,int size = 0)
+	{
+		if (size == 0)
+		{
+			size = asm_data->size;
+		}
+
+		switch (size)
+		{
+			case 1:
+			{
+				write_body(asm_data->address);
+				break;
+			}
+			case 4:
+			{
+				write_body("[rel " + asm_data->address + "]");
+				break;
+			}
+		}
+
+	}
+
 
 
 	void gen_stack(ASMStack *asm_stack,int size = 0)
@@ -373,6 +451,8 @@ public:
 
 	}
 
+
+
 	void gen_register(ASMRegister *asm_reg)
 	{
 		switch(asm_reg->type)
@@ -386,6 +466,96 @@ public:
 				else if (asm_reg->size == 8)
 				{
 					write_body("rax");
+				}
+				else
+				{
+					std::cout << (int)asm_reg->type << std::endl;
+					DEBUG_PANIC("unknown register size " + std::to_string(asm_reg->size));
+				}
+				
+				break;
+			}
+			case ASMRegisterType::RBX:
+			{
+				if (asm_reg->size == 4)
+				{
+					write_body("ebx");
+				}
+				else if (asm_reg->size == 8)
+				{
+					write_body("rbx");
+				}
+				else
+				{
+					std::cout << (int)asm_reg->type << std::endl;
+					DEBUG_PANIC("unknown register size " + std::to_string(asm_reg->size));
+				}
+				
+				break;
+			}
+			case ASMRegisterType::RCX:
+			{
+				if (asm_reg->size == 4)
+				{
+					write_body("ecx");
+				}
+				else if (asm_reg->size == 8)
+				{
+					write_body("rcx");
+				}
+				else
+				{
+					std::cout << (int)asm_reg->type << std::endl;
+					DEBUG_PANIC("unknown register size " + std::to_string(asm_reg->size));
+				}
+				
+				break;
+			}
+			case ASMRegisterType::RDX:
+			{
+				if (asm_reg->size == 4)
+				{
+					write_body("edx");
+				}
+				else if (asm_reg->size == 8)
+				{
+					write_body("rdx");
+				}
+				else
+				{
+					std::cout << (int)asm_reg->type << std::endl;
+					DEBUG_PANIC("unknown register size " + std::to_string(asm_reg->size));
+				}
+				
+				break;
+			}
+			case ASMRegisterType::RDI:
+			{
+				if (asm_reg->size == 4)
+				{
+					write_body("edi");
+				}
+				else if (asm_reg->size == 8)
+				{
+					write_body("rdi");
+				}
+				else
+				{
+					std::cout << (int)asm_reg->type << std::endl;
+					DEBUG_PANIC("unknown register size " + std::to_string(asm_reg->size));
+				}
+				
+				break;
+			}
+			case ASMRegisterType::RSI:
+			{
+				if (asm_reg->size == 4)
+				{
+					write_body("esi");
+				}
+				else if (asm_reg->size == 8)
+				{
+					write_body("rsi");
 				}
 				else
 				{

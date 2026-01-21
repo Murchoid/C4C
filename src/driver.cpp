@@ -3,6 +3,7 @@
 #include "front_end/include/lexer.hpp"
 #include "front_end/include/parser.hpp"
 #include "front_end/include/identifier_resolution.hpp"
+#include "front_end/include/type_checking.hpp"
 #include "front_end/include/loop_labelling.hpp"
 
 
@@ -27,27 +28,30 @@ int main(int argc,char *argv[])
 
 	Lexer lexer(file_name,file_contents);
 	std::vector<Tokens> tokens = lexer.scan_tokens();
-	lexer.print();
+	//lexer.print();
 
 	{
-		Arena arena(100000);
+		Arena arena(1000000);
+		
 		Parser parser(file_name,tokens,&arena);
 		parser.parse_program();
 		DEBUG_PRINT("sanity check : ", " after parser ");
 		//arena.reset();
 
 		IdentifierResolution resolve(file_name,parser.program);
+
+		TypeChecking type_check(file_name,resolve.program);
 		
-		LoopLabelling loop_label(file_name,resolve.program,resolve.global_counter);
+		LoopLabelling loop_label(file_name,type_check.program,resolve.global_counter);
 
 
-		AstToTac tac(file_name,loop_label.program,&arena,loop_label.global_counter);
+		AstToTac tac(file_name,loop_label.program,&arena,loop_label.global_counter,type_check.table);
 
 		DEBUG_PRINT("sanity check : ", " after ast to tac ");
 		TacToIntel64 intel(file_name,tac.program,&arena);
 
 		DEBUG_PRINT("sanity check : ", " after tac to intel64");
-		Pseudo pseudo(file_name,intel.program,&arena);
+		Pseudo pseudo(file_name,intel.program,&arena,type_check.table);
 		DEBUG_PRINT("sanity check : ", " after replace pseudo");
 		FixUp fix(file_name,pseudo.program,&arena);
 

@@ -146,11 +146,36 @@ public:
 		if (dst->type == ASMOperandType::STACK)
 		{
 			ASMStack *dst_stack = (ASMStack *)dst->operand;
-			ASMStack *src_stack = (ASMStack *)src->operand;
 			
 			if(src->type == ASMOperandType::STACK)
 			{
+				ASMStack *src_stack = (ASMStack *)src->operand;
+				void *mem = alloc(sizeof(ASMRegister));
+				ASMRegister *asm_reg = new(mem) ASMRegister(ASMRegisterType::R11,src_stack->size);
+				
+				mem = alloc(sizeof(ASMOperand));
+				ASMOperand *asm_scratch_reg = new(mem) ASMOperand(ASMOperandType::REGISTER,asm_reg);
 
+				mem = alloc(sizeof(ASMMovInst));
+				ASMMovInst *asm_mov = new(mem) ASMMovInst(asm_scratch_reg,src);
+				
+				mem = alloc(sizeof(ASMInstruction));
+				ASMInstruction *asm_inst = new(mem) ASMInstruction(ASMInstructionType::MOV,asm_mov);
+				this->inst->at(this->index++) = asm_inst;
+
+
+				mem = alloc(sizeof(ASMMovInst));
+				asm_mov = new(mem) ASMMovInst(dst,asm_scratch_reg);
+				
+				mem = alloc(sizeof(ASMInstruction));
+				asm_inst = new(mem) ASMInstruction(ASMInstructionType::MOV,asm_mov);
+
+
+				this->inst->insert(this->inst->begin() + this->index,asm_inst);
+			}
+			else if(src->type == ASMOperandType::DATA)
+			{
+				ASMData *src_stack = (ASMData *)src->operand;
 				void *mem = alloc(sizeof(ASMRegister));
 				ASMRegister *asm_reg = new(mem) ASMRegister(ASMRegisterType::R11,src_stack->size);
 				
@@ -175,6 +200,67 @@ public:
 				this->inst->insert(this->inst->begin() + this->index,asm_inst);
 			}
 		}
+	
+		else if (dst->type == ASMOperandType::DATA)
+		{
+			ASMData *dst_data = (ASMData *)dst->operand;
+			
+			if(src->type == ASMOperandType::STACK)
+			{
+				ASMStack *src_stack = (ASMStack *)src->operand;
+				void *mem = alloc(sizeof(ASMRegister));
+				ASMRegister *asm_reg = new(mem) ASMRegister(ASMRegisterType::R11,src_stack->size);
+				
+				mem = alloc(sizeof(ASMOperand));
+				ASMOperand *asm_scratch_reg = new(mem) ASMOperand(ASMOperandType::REGISTER,asm_reg);
+
+				mem = alloc(sizeof(ASMMovInst));
+				ASMMovInst *asm_mov = new(mem) ASMMovInst(asm_scratch_reg,src);
+				
+				mem = alloc(sizeof(ASMInstruction));
+				ASMInstruction *asm_inst = new(mem) ASMInstruction(ASMInstructionType::MOV,asm_mov);
+				this->inst->at(this->index++) = asm_inst;
+
+
+				mem = alloc(sizeof(ASMMovInst));
+				asm_mov = new(mem) ASMMovInst(dst,asm_scratch_reg);
+				
+				mem = alloc(sizeof(ASMInstruction));
+				asm_inst = new(mem) ASMInstruction(ASMInstructionType::MOV,asm_mov);
+
+
+				this->inst->insert(this->inst->begin() + this->index,asm_inst);
+			}
+			else if(src->type == ASMOperandType::DATA)
+			{
+
+				
+				ASMData *src_stack = (ASMData *)src->operand;
+				void *mem = alloc(sizeof(ASMRegister));
+				ASMRegister *asm_reg = new(mem) ASMRegister(ASMRegisterType::R11,src_stack->size);
+				
+				mem = alloc(sizeof(ASMOperand));
+				ASMOperand *asm_scratch_reg = new(mem) ASMOperand(ASMOperandType::REGISTER,asm_reg);
+
+				mem = alloc(sizeof(ASMMovInst));
+				ASMMovInst *asm_mov = new(mem) ASMMovInst(asm_scratch_reg,src);
+				
+				mem = alloc(sizeof(ASMInstruction));
+				ASMInstruction *asm_inst = new(mem) ASMInstruction(ASMInstructionType::MOV,asm_mov);
+				this->inst->at(this->index++) = asm_inst;
+
+
+				mem = alloc(sizeof(ASMMovInst));
+				asm_mov = new(mem) ASMMovInst(dst,asm_scratch_reg);
+				
+				mem = alloc(sizeof(ASMInstruction));
+				asm_inst = new(mem) ASMInstruction(ASMInstructionType::MOV,asm_mov);
+
+
+				this->inst->insert(this->inst->begin() + this->index,asm_inst);
+			}
+		}
+	
 	}
 	
 	

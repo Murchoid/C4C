@@ -47,6 +47,7 @@ public:
 		void *mem = alloc(sizeof(ASMDeclaration));
 		ASMDeclaration *asm_decl = nullptr;
 
+		
 		switch (decl->type)
 		{
 			case TACDeclarationType::FUNCTION:
@@ -55,11 +56,44 @@ public:
 				asm_decl = new(mem) ASMDeclaration(ASMDeclarationType::FUNCTION,asm_fn);
 				break;
 			}
+			case TACDeclarationType::VARDECL:
+			{
+				DEBUG_PRINT("here "," vardecl");
+				ASMGlobalVariable *asm_vardecl = convert_global_vardecl((TACGlobalVariable *)decl->decl);
+				asm_decl = new(mem) ASMDeclaration(ASMDeclarationType::VARDECL,asm_vardecl);
+				break;
+			}
+			default:
+			{
+				DEBUG_PRINT("here "," default  ");
+			}
 		}
 
 		return asm_decl;
 	}
 
+
+	ASMGlobalVariable *convert_global_vardecl(TACGlobalVariable *decl)
+	{
+		void *mem = alloc(sizeof(ASMGlobalVariable));
+		ASMGlobalVariable *asm_vardecl = new(mem) ASMGlobalVariable(decl->is_public,decl->ident);
+		
+		switch (decl->data_type)
+		{
+			case TACType::I32:
+			{
+				asm_vardecl->add_data(ASMType::I32,decl->data);
+				break;
+			}
+			case TACType::I64:
+			{
+				asm_vardecl->add_data(ASMType::I64,decl->data);
+				break;
+			}
+		}
+
+		return asm_vardecl;
+	}
 
 	ASMFunction *convert_function(TACFunction *decl)
 	{
@@ -96,6 +130,58 @@ public:
 		mem = alloc(sizeof(ASMInstruction));
 		asm_inst = new(mem) ASMInstruction(ASMInstructionType::MOV,asm_mov);
 		this->inst->push_back(asm_inst);
+
+
+
+		ASMRegisterType arg_registers[] = {
+			ASMRegisterType::RDI,
+			ASMRegisterType::RSI,
+			ASMRegisterType::RDX,
+			ASMRegisterType::RCX,
+			ASMRegisterType::R8,
+			ASMRegisterType::R9,
+		};
+
+
+
+
+		
+		for (int i = 0; i < decl->arguments.size(); i++)
+		{
+			ASMRegisterType reg = arg_registers[i];
+			if (i >= 6)
+			{
+				break;
+			}
+
+			std::string arg = decl->arguments[i];
+
+
+			void *mem = alloc(sizeof(ASMPseudo));
+			ASMPseudo *asm_pseudo = new(mem) ASMPseudo(arg);
+
+			mem = alloc(sizeof(ASMOperand));
+			asm_dst = new(mem) ASMOperand(ASMOperandType::PSEUDO,asm_pseudo);
+				
+
+			mem = alloc(sizeof(ASMRegister));
+			ASMRegister *asm_reg = new(mem) ASMRegister(reg,4);
+			
+			mem = alloc(sizeof(ASMOperand));
+			ASMOperand *asm_src = new(mem) ASMOperand(ASMOperandType::REGISTER,asm_reg);
+
+
+			mem = alloc(sizeof(ASMMovInst));
+			ASMMovInst *asm_mov = new(mem) ASMMovInst(asm_dst,asm_src);
+			
+			mem = alloc(sizeof(ASMInstruction));
+			ASMInstruction *asm_inst = new(mem) ASMInstruction(ASMInstructionType::MOV,asm_mov);
+			this->inst->push_back(asm_inst);	
+		}
+
+
+
+
 		
 		for (TACInstruction *inst : decl->instructions)
 		{
@@ -103,6 +189,7 @@ public:
 			{
 				continue;
 			}
+			DEBUG_PRINT("here "," inst loop");
 			convert_instruction(inst);
 		}
 
@@ -140,6 +227,11 @@ public:
 				convert_copy_inst((TACCopyInst *)inst->instruction);
 				break;
 			}
+			case TACInstructionType::FUNCTION_CALL:
+			{
+				convert_function_call_inst((TACFunctionCallInst *)inst->instruction);
+				break;
+			}
 			case TACInstructionType::UNARY:
 			{
 				convert_unary_inst((TACUnaryInst *)inst->instruction);
@@ -157,6 +249,220 @@ public:
 			}
 		}
 	}
+
+
+
+	void convert_function_call_inst(TACFunctionCallInst *inst)
+	{
+		ASMRegisterType arg_registers[] = {
+			ASMRegisterType::RDI,
+			ASMRegisterType::RSI,
+			ASMRegisterType::RDX,
+			ASMRegisterType::RCX,
+			ASMRegisterType::R8,
+			ASMRegisterType::R9,
+		};
+
+		std::vector<TACValue *> register_args;
+		std::vector<TACValue *> stack_args;
+
+		int stack_padding = 0;
+
+		for (int i = 0; i < inst->arguments.size(); i++)
+		{
+			TACValue *tac_value = inst->arguments[i];
+
+			if (i >= 6)
+			{
+				stack_args.push_back(tac_value);
+			}
+			else
+			{
+				register_args.push_back(tac_value);
+			}
+		}
+
+		std::reverse(stack_args.begin(), stack_args.end());
+
+		if ( stack_args.size() % 2)
+		{
+			stack_padding = 8;
+
+			void *mem = alloc(sizeof(ASMRegister));
+			ASMRegister *asm_reg = new(mem) ASMRegister(ASMRegisterType::RSP,8);
+			
+
+			mem = alloc(sizeof(ASMOperand));
+			ASMOperand *asm_dst = new(mem) ASMOperand(ASMOperandType::REGISTER,asm_reg);
+			
+
+			mem = alloc(sizeof(int));
+			int *stack_padding_ptr = new(mem) int;
+			*stack_padding_ptr = stack_padding;
+
+			mem = alloc(sizeof(ASMImmediate));
+			ASMImmediate *asm_imm = new(mem) ASMImmediate(ASMImmediateType::I32,stack_padding_ptr);
+			
+			mem = alloc(sizeof(ASMOperand));
+			ASMOperand *asm_src = new(mem) ASMOperand(ASMOperandType::IMMEDIATE,asm_imm);
+
+			
+			mem = alloc(sizeof(ASMSubInst));
+			ASMSubInst *asm_sub = new(mem) ASMSubInst(asm_dst,asm_src);
+			
+			mem = alloc(sizeof(ASMInstruction));
+			ASMInstruction *asm_inst = new(mem) ASMInstruction(ASMInstructionType::SUB,asm_sub);
+			this->inst->push_back(asm_inst);
+
+		}
+
+
+
+		for (int i = 0; i < register_args.size(); i++)
+		{
+			ASMRegisterType reg = arg_registers[i];
+			TACValue *tac_arg = register_args[i];
+
+			if (tac_arg == nullptr)
+			{
+				continue;
+			}
+
+
+			void *mem = alloc(sizeof(ASMRegister));
+			ASMRegister *asm_reg = new(mem) ASMRegister(reg,4);
+			
+
+			mem = alloc(sizeof(ASMOperand));
+			ASMOperand *asm_dst = new(mem) ASMOperand(ASMOperandType::REGISTER,asm_reg);
+
+			ASMOperand *asm_arg = convert_value(tac_arg);
+
+			mem = alloc(sizeof(ASMMovInst));
+			ASMMovInst *asm_mov = new(mem) ASMMovInst(asm_dst,asm_arg);
+			
+			mem = alloc(sizeof(ASMInstruction));
+			ASMInstruction *asm_inst = new(mem) ASMInstruction(ASMInstructionType::MOV,asm_mov);
+			this->inst->push_back(asm_inst);	
+		}
+
+
+
+		for (int i = 0; i < stack_args.size(); i++)
+		{
+			TACValue *tac_arg = stack_args[i];
+
+			if (tac_arg == nullptr)
+			{
+				continue;
+			}
+
+
+			ASMOperand *asm_arg = convert_value(tac_arg);
+
+
+			if (asm_arg->type == ASMOperandType::REGISTER or asm_arg->type == ASMOperandType::IMMEDIATE)
+			{
+				void *mem = alloc(sizeof(ASMPushInst));
+				ASMPushInst *asm_push = new(mem) ASMPushInst(asm_arg);
+				
+				mem = alloc(sizeof(ASMInstruction));
+				ASMInstruction *asm_inst = new(mem) ASMInstruction(ASMInstructionType::PUSH,asm_push);
+				this->inst->push_back(asm_inst);
+				
+			}
+			else
+			{
+				void *mem = alloc(sizeof(ASMRegister));
+				ASMRegister *asm_reg = new(mem) ASMRegister(ASMRegisterType::RAX,4);
+				
+
+				mem = alloc(sizeof(ASMOperand));
+				ASMOperand *asm_dst = new(mem) ASMOperand(ASMOperandType::REGISTER,asm_reg);
+
+
+				mem = alloc(sizeof(ASMMovInst));
+				ASMMovInst *asm_mov = new(mem) ASMMovInst(asm_dst,asm_arg);
+			
+				
+				mem = alloc(sizeof(ASMInstruction));
+				ASMInstruction *asm_inst = new(mem) ASMInstruction(ASMInstructionType::MOV,asm_mov);
+				this->inst->push_back(asm_inst);
+		
+
+				mem = alloc(sizeof(ASMPushInst));
+				ASMPushInst *asm_push = new(mem) ASMPushInst(asm_dst);
+				
+				mem = alloc(sizeof(ASMInstruction));
+				asm_inst = new(mem) ASMInstruction(ASMInstructionType::PUSH,asm_push);
+				this->inst->push_back(asm_inst);
+				
+			}
+			
+
+		}
+
+
+		void *mem = alloc(sizeof(ASMCallInst));
+		ASMCallInst *asm_call = new(mem) ASMCallInst(inst->ident);
+		
+		mem = alloc(sizeof(ASMInstruction));
+		ASMInstruction *asm_inst = new(mem) ASMInstruction(ASMInstructionType::CALL,asm_call);
+		this->inst->push_back(asm_inst);
+
+
+		int stack_unpadding = 8 * stack_args.size() + stack_padding;
+
+		if ( stack_unpadding != 0)
+		{
+			void *mem = alloc(sizeof(ASMRegister));
+			ASMRegister *asm_reg = new(mem) ASMRegister(ASMRegisterType::RSP,8);
+			
+
+			mem = alloc(sizeof(ASMOperand));
+			ASMOperand *asm_dst = new(mem) ASMOperand(ASMOperandType::REGISTER,asm_reg);
+			
+
+			mem = alloc(sizeof(int));
+			int *stack_unpadding_ptr = new(mem) int;
+			*stack_unpadding_ptr = stack_unpadding;
+
+			mem = alloc(sizeof(ASMImmediate));
+			ASMImmediate *asm_imm = new(mem) ASMImmediate(ASMImmediateType::I32,stack_unpadding_ptr);
+			
+			mem = alloc(sizeof(ASMOperand));
+			ASMOperand *asm_src = new(mem) ASMOperand(ASMOperandType::IMMEDIATE,asm_imm);
+
+			
+			mem = alloc(sizeof(ASMAddInst));
+			ASMAddInst *asm_add = new(mem) ASMAddInst(asm_dst,asm_src);
+			
+			mem = alloc(sizeof(ASMInstruction));
+			ASMInstruction *asm_inst = new(mem) ASMInstruction(ASMInstructionType::ADD,asm_add);
+			this->inst->push_back(asm_inst);
+		}
+
+
+		
+		ASMOperand *asm_dst = convert_value(inst->dst);
+
+		mem = alloc(sizeof(ASMRegister));
+		ASMRegister *asm_reg = new(mem) ASMRegister(ASMRegisterType::RAX,4);
+		
+
+		mem = alloc(sizeof(ASMOperand));
+		ASMOperand *asm_src = new(mem) ASMOperand(ASMOperandType::REGISTER,asm_reg);
+
+		mem = alloc(sizeof(ASMMovInst));
+		ASMMovInst *asm_mov = new(mem) ASMMovInst(asm_dst,asm_src);
+	
+		
+		mem = alloc(sizeof(ASMInstruction));
+		asm_inst = new(mem) ASMInstruction(ASMInstructionType::MOV,asm_mov);
+		this->inst->push_back(asm_inst);
+		
+	}
+
 
 	void convert_label_inst(TACLabelInst *inst)
 	{
@@ -203,7 +509,6 @@ public:
 
 	void convert_jmp_not_zero_inst(TACJmpIfNotZeroInst *inst)
 	{
-		std::cout << " huh  " <<std::endl;
 		ASMOperand *asm_value = convert_value(inst->value);
 
 		void *mem = alloc(sizeof(int));
@@ -349,7 +654,6 @@ public:
 			}
 			case TACBinaryOperator::SUB:
 			{
-				std::cout << " sub  " << std::endl;
 				void *mem = alloc(sizeof(ASMSubInst));
 				ASMSubInst *asm_sub = new(mem) ASMSubInst(asm_dst,asm_src2);
 				
@@ -482,8 +786,6 @@ public:
 						void *mem = alloc(sizeof(int));
 						int *asm_value = new(mem) int;
 						*asm_value = *((int *)tac_const->constant);
-						std::cout << "  const " << *asm_value << std::endl;
-
 						mem = alloc(sizeof(ASMImmediate));
 						ASMImmediate *asm_imm = new(mem) ASMImmediate(ASMImmediateType::I32,asm_value);
 						mem = alloc(sizeof(ASMOperand));

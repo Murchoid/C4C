@@ -507,6 +507,18 @@ public:
 		return this->tokens;
 	}
 
+
+
+	void print_error(Tokens token)
+	{
+		int start = token.start;
+		int end = token.end;
+		std::string source_part = this->file_source.substr(start,end);
+
+	}
+
+
+
 	inline void print()
 	{
 		for (Tokens token : this->tokens)

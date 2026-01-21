@@ -10,6 +10,7 @@
 #include <cstdlib>
 #include <optional>
 #include <cmath>
+#include <algorithm>
 
 #ifndef DEBUG_PRINT
 #define DEBUG_PRINT(x,y) std::cout << (x) << (y) << std::endl

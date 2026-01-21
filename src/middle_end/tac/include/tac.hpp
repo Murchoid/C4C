@@ -25,6 +25,7 @@ public:
 enum class TACDeclarationType
 {
 	FUNCTION,
+	VARDECL,
 };
 
 class TACDeclaration
@@ -46,6 +47,8 @@ public:
 	bool is_public;
 	std::string ident;
 	std::vector<TACInstruction *>instructions;
+	std::vector<std::string> arguments;
+
 
 	TACFunction(bool is_public,std::string ident)
 	{
@@ -57,7 +60,44 @@ public:
 	{
 		this->instructions.push_back(inst);
 	}
+
+	void add_argument(std::string argument)
+	{
+		this->arguments.push_back(argument);
+	}
 };
+
+
+enum class TACType
+{
+	I32,
+	I64,
+};
+
+
+class TACGlobalVariable
+{
+public:
+	bool is_public;
+	std::string ident;
+	TACType data_type;
+	void *data;
+	
+
+	TACGlobalVariable(bool is_public,std::string ident)
+	{
+		this->ident = ident;
+		this->is_public = is_public;
+	}
+
+	void add_data(TACType data_type,void *data)
+	{
+		this->data_type = data_type;
+		this->data = data;
+	}
+};
+
+
 
 
 enum class TACInstructionType
@@ -70,6 +110,9 @@ enum class TACInstructionType
 	JMP_NOT_ZERO,
 	LABEL,
 	COPY,
+	FUNCTION_CALL,
+	SIGN_EXTEND,
+	TRUNCATE,
 };
 
 
@@ -85,6 +128,28 @@ public:
 		this->instruction = instruction;
 	}
 
+};
+
+
+
+class TACFunctionCallInst
+{
+public:
+	std::string ident;
+	std::vector<TACValue *> arguments;
+	TACValue *dst;
+
+
+	TACFunctionCallInst(std::string ident,TACValue *dst)
+	{
+		this->ident = ident;
+		this->dst = dst;
+	}
+
+	void add_argument(TACValue *arg)
+	{
+		this->arguments.push_back(arg);
+	}
 };
 
 
@@ -122,6 +187,44 @@ public:
 		this->src = src;
 	}
 };
+
+
+
+
+class TACSignExtendInst
+{
+public:
+	TACValue *dst;
+	TACValue *src;
+
+	TACSignExtendInst(TACValue *dst,TACValue *src)
+	{
+		this->dst = dst;
+		this->src = src;
+	}
+};
+
+
+
+
+
+class TACTruncateInst
+{
+public:
+	TACValue *dst;
+	TACValue *src;
+
+	TACTruncateInst(TACValue *dst,TACValue *src)
+	{
+		this->dst = dst;
+		this->src = src;
+	}
+};
+
+
+
+
+
 
 
 enum class TACBinaryOperator

@@ -2,7 +2,7 @@
 #define C4C_AST_H
 
 #include "lexer.hpp"
-
+#include "type_checking_datatypes.hpp"
 
 
 
@@ -284,14 +284,22 @@ public:
 	ASTType *type;
 	std::string ident;
 	ASTExpression *expr;
+	bool is_public = false;
+	bool is_static = false;
+	bool is_extern = false;
 	//ASTBox box;
 
-	ASTVarDecl(ASTType *type,std::string ident,ASTExpression *expr)
+	ASTVarDecl(ASTType *type,std::string ident,ASTExpression *expr,bool is_public=false,bool is_static=false,bool is_extern = false)
 	{
 		this->type = type;
 		this->ident = ident;
 		this->expr = expr;
+		this->is_public = is_public;
+		this->is_static = is_static;
+		this->is_extern = is_extern;
 	}
+
+
 };
 
 
@@ -485,6 +493,12 @@ class ASTExpression
 public:
 	ASTExpressionType type;
 	void *expr;
+	DataType data_type;
+	void add_data_type(DataType data_type)
+	{
+		this->data_type = data_type;
+	}
+
 	ASTExpression(ASTExpressionType type,void *expr)
 	{
 		this->type = type;
@@ -497,6 +511,12 @@ class ASTI32Expr
 {
 public:
 	int value;
+	DataType data_type;
+	void add_data_type(DataType data_type)
+	{
+		this->data_type = data_type;
+	}
+
 	ASTI32Expr(int value)
 	{
 		this->value = value;
@@ -508,6 +528,12 @@ class ASTI64Expr
 {
 public:
 	long int value;
+	DataType data_type;
+	void add_data_type(DataType data_type)
+	{
+		this->data_type = data_type;
+	}
+
 	ASTI64Expr(int value)
 	{
 		this->value = value;
@@ -519,6 +545,12 @@ class ASTVariableExpr
 {
 public:
 	std::string ident;
+	DataType data_type;
+	void add_data_type(DataType data_type)
+	{
+		this->data_type = data_type;
+	}
+
 	ASTVariableExpr(std::string ident)
 	{
 		this->ident = ident;
@@ -531,6 +563,12 @@ class ASTUnaryExpr
 public:
 	ASTUnaryOperator op;
 	ASTExpression *rhs;
+	DataType data_type;
+	void add_data_type(DataType data_type)
+	{
+		this->data_type = data_type;
+	}
+
 	
 	ASTUnaryExpr(ASTUnaryOperator op,ASTExpression *rhs)
 	{
@@ -571,6 +609,12 @@ public:
 	ASTExpression *lhs;
 	ASTBinaryOperator op;
 	ASTExpression *rhs;
+	DataType data_type;
+	void add_data_type(DataType data_type)
+	{
+		this->data_type = data_type;
+	}
+
 	
 	ASTBinaryExpr(ASTExpression *lhs,ASTBinaryOperator op,ASTExpression *rhs)
 	{
@@ -589,6 +633,12 @@ public:
 	ASTExpression *lhs;
 	ASTAssignOperator op;
 	ASTExpression *rhs;
+	DataType data_type;
+	void add_data_type(DataType data_type)
+	{
+		this->data_type = data_type;
+	}
+
 	
 	ASTAssignExpr(ASTExpression *lhs,ASTAssignOperator op,ASTExpression *rhs)
 	{
@@ -605,6 +655,12 @@ class ASTFunctionCallExpr
 public:
 	std::string ident;
 	std::vector<ASTExpression *> args;
+	DataType data_type;
+	void add_data_type(DataType data_type)
+	{
+		this->data_type = data_type;
+	}
+
 
 	inline void add_ident(std::string ident)
 	{
@@ -624,6 +680,12 @@ class ASTCastExpr
 public:
 	ASTDataType type;
 	ASTExpression *rhs;
+	DataType data_type;
+	void add_data_type(DataType data_type)
+	{
+		this->data_type = data_type;
+	}
+
 	ASTCastExpr(ASTDataType type,ASTExpression *rhs)
 	{
 		this->type = type;

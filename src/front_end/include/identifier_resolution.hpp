@@ -5,17 +5,22 @@
 #include <map>
 #include "ast.hpp"
 
+
 class MapEntry
 {
 public:
     std::string name;
     bool current = true;
-    MapEntry(std::string name,bool current = true)
+    bool linkage = false;
+    MapEntry(std::string name,bool current,bool linkage = false)
     {
         this->name = name;
         this->current = current;
+        this->linkage = linkage;
     }
 };
+
+
 
 
 class Map
@@ -38,6 +43,11 @@ public:
         this->map.emplace(name, entry);
     }
 
+    MapEntry get(std::string name)
+    {
+        return this->map.at(name);
+        //return this->map[name].name;
+    }
 
     std::string get_name(std::string name)
     {
@@ -47,6 +57,12 @@ public:
 
 
     bool get_current(std::string name)
+    {
+        return this->map.at(name).current;
+        //return this->map[name].name;
+    }
+
+    bool get_linkage(std::string name)
     {
         return this->map.at(name).current;
         //return this->map[name].name;
@@ -93,8 +109,20 @@ public:
 				resolve_function((ASTFunctionDecl *)decl->decl,ident_map);
 				break;
 			}
+            case ASTDeclarationType::VARDECL:
+			{
+				resolve_global_vardecl((ASTVarDecl *)decl->decl,ident_map);
+				break;
+			}
 		}
 
+    }
+
+
+    void resolve_global_vardecl(ASTVarDecl *decl,Map *ident_map)
+    {
+        std::string tmp_name = decl->ident;
+        ident_map->add(decl->ident,MapEntry(tmp_name,true,true));
     }
 
 
@@ -111,16 +139,54 @@ public:
     }
 
 
+    
+
     void resolve_function(ASTFunctionDecl *decl,Map *ident_map)
     {
-        resolve_block_stmt(decl->block,ident_map);
+        if (ident_map->lookup(decl->ident) and ident_map->get_current(decl->ident))
+        {
+            fatal("redeclared function " + decl->ident);
+        }
+        
+        ident_map->add(decl->ident,MapEntry(decl->ident,true,true));
+
+        Map new_ident_map = copy_ident_map(ident_map);
+
+
+        for (ASTFunctionArgument *arg : decl->arguments)
+        {
+            if (arg == nullptr)
+            {
+                continue;
+            }
+
+            resolve_function_argument(arg,&new_ident_map);
+        }
+
+        if (decl->block != nullptr)
+        {
+            resolve_block_stmt(decl->block,&new_ident_map);
+        }
     }
 
+
+    void resolve_function_argument(ASTFunctionArgument*arg,Map *ident_map)
+    {
+        if (ident_map->lookup(arg->ident) and ident_map->get_current(arg->ident))
+        {
+            fatal("redeclared function argument " + arg->ident);
+        }
+        else
+        {
+            std::string tmp_name = make_tmp(arg->ident + "_");
+            ident_map->add(arg->ident,MapEntry(tmp_name,true));
+            arg->ident = tmp_name;
+        }
+    }
 
 
     void resolve_block_stmt(ASTBlockStmt *block,Map *ident_map)
 	{
-
         Map new_ident_map = copy_ident_map(ident_map);
 		for (ASTStatement *stmt : block->stmts)
 		{
@@ -162,9 +228,23 @@ public:
 
     void resolve_vardecl_stmt(ASTVarDecl *decl,Map *ident_map)
     {
-        if (ident_map->lookup(decl->ident) and ident_map->get_current(decl->ident))
+        if (ident_map->lookup(decl->ident))
         {
-            fatal("redeclared variable " + decl->ident);
+            MapEntry prev_entry = ident_map->get(decl->ident);
+            if (ident_map->get_current(decl->ident))
+            {
+                if ( not (ident_map->get_linkage(decl->ident) and decl->is_extern))
+                {
+                    fatal(" local declarations conflict");
+                }
+            }
+        }
+
+
+        if (decl->is_extern)
+        {
+            std::string tmp_name = decl->ident;
+            ident_map->add(decl->ident,MapEntry(tmp_name,true,true));
         }
         else
         {
@@ -173,11 +253,8 @@ public:
 
             if (decl->expr != nullptr)
             {
-                DEBUG_PRINT(" inside resolve expr ", " vardecl stmt ");
                 resolve_expr(decl->expr,ident_map);
             }
-
-            DEBUG_PRINT("vardecl  " + decl->ident + "  ",tmp_name);
 
             decl->ident = tmp_name;
         }
@@ -248,11 +325,37 @@ public:
                 if (ident_map->lookup(name))
                 {
                     var_expr->ident = ident_map->get_name(name);
-                    DEBUG_PRINT("inside lookup true : " + name + " ", " expr_var " + ident_map->get_name(name));
                 }
                 else
                 {
                     fatal("undeclared variable  :  " + name);
+                }
+                break;
+            }
+            case ASTExpressionType::FUNCTION_CALL:
+			{
+                ASTFunctionCallExpr *fn_expr = (ASTFunctionCallExpr *)expr->expr;
+                //fatal(" fatal  -> " + var_expr->ident);
+                std::string name = fn_expr->ident;
+                if (ident_map->lookup(name))
+                {
+                    fn_expr->ident = ident_map->get_name(name);
+
+                    for (ASTExpression *arg : fn_expr->args)
+                    {
+                        if (arg == nullptr)
+                        {
+                            continue;
+                        }
+
+                        resolve_expr(arg,ident_map);
+
+                    }
+                    
+                }
+                else
+                {
+                    fatal("undeclared function called  :  " + name);
                 }
                 break;
             }
@@ -303,6 +406,9 @@ public:
     {
         DEBUG_PANIC(string);
     }
+
+
+
 };
 
 

@@ -25,18 +25,18 @@ public:
                 continue;
             }
 
-            resolve_decl(decl);
+            label_decl(decl);
         }
     }
 
 
-    void resolve_decl(ASTDeclaration *decl)
+    void label_decl(ASTDeclaration *decl)
     {
         switch (decl->type)
 		{
 			case ASTDeclarationType::FUNCTION:
 			{
-				resolve_function((ASTFunctionDecl *)decl->decl);
+				label_function((ASTFunctionDecl *)decl->decl);
 				break;
 			}
 		}
@@ -44,51 +44,51 @@ public:
     }
 
 
-    void resolve_function(ASTFunctionDecl *decl)
+    void label_function(ASTFunctionDecl *decl)
     {
-        resolve_block_stmt(decl->block);
+        label_block_stmt(decl->block);
     }
 
 
 
-    void resolve_block_stmt(ASTBlockStmt *block,std::string label = "")
+    void label_block_stmt(ASTBlockStmt *block,std::string label = "")
 	{
 
     	for (ASTStatement *stmt : block->stmts)
 		{
-			resolve_stmt(stmt,label);
+			label_stmt(stmt,label);
 		}
 	}
 
-    void resolve_stmt(ASTStatement *stmt,std::string label)
+    void label_stmt(ASTStatement *stmt,std::string label)
 	{
 		switch(stmt->type)
 		{
             case ASTStatementType::IF:
 			{
-                resolve_if_stmt((ASTIfStmt *)stmt->stmt,label);
+                label_if_stmt((ASTIfStmt *)stmt->stmt,label);
 				break;
 			}
             case ASTStatementType::WHILE:
 			{
                 std::string new_label = make_label();
-                resolve_while_stmt((ASTWhileStmt *)stmt->stmt,new_label);
+                label_while_stmt((ASTWhileStmt *)stmt->stmt,new_label);
 				break;
 			}
             case ASTStatementType::BREAK:
             {
-                resolve_break_stmt((ASTBreakStmt *)stmt->stmt,label);
+                label_break_stmt((ASTBreakStmt *)stmt->stmt,label);
                 break;
             }
             case ASTStatementType::CONTINUE:
             {
-                resolve_continue_stmt((ASTContinueStmt *)stmt->stmt,label);
+                label_continue_stmt((ASTContinueStmt *)stmt->stmt,label);
                 break;
             }
 		}
 	}
 
-    void resolve_break_stmt(ASTBreakStmt *stmt,std::string label)
+    void label_break_stmt(ASTBreakStmt *stmt,std::string label)
     {
         if (label == "")
         {
@@ -101,7 +101,7 @@ public:
     }
 
 
-    void resolve_continue_stmt(ASTContinueStmt *stmt,std::string label)
+    void label_continue_stmt(ASTContinueStmt *stmt,std::string label)
     {
         if (label == "")
         {
@@ -115,17 +115,17 @@ public:
 
 
 
-    void resolve_while_stmt(ASTWhileStmt *stmt,std::string label)
+    void label_while_stmt(ASTWhileStmt *stmt,std::string label)
     {
         stmt->add_label(label);
-        resolve_block_stmt(stmt->block,label);
+        label_block_stmt(stmt->block,label);
     }
 
     
 
-    void resolve_if_stmt(ASTIfStmt *stmt,std::string label)
+    void label_if_stmt(ASTIfStmt *stmt,std::string label)
     {
-        resolve_block_stmt(stmt->block,label);
+        label_block_stmt(stmt->block,label);
 
         for(ASTIfElifBlock *elif_block : stmt->elif_blocks)
         {
@@ -134,13 +134,13 @@ public:
                 continue;
             }
 
-            resolve_block_stmt(elif_block->block,label);
+            label_block_stmt(elif_block->block,label);
 
         }
 
         if(stmt->else_block != nullptr)
         {
-            resolve_block_stmt(stmt->else_block->block,label);
+            label_block_stmt(stmt->else_block->block,label);
         }
     }
 

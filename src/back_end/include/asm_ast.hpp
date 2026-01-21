@@ -24,6 +24,7 @@ public:
 enum class ASMDeclarationType
 {
 	FUNCTION,
+	VARDECL,
 };
 
 class ASMDeclaration
@@ -45,6 +46,7 @@ public:
 	bool is_public;
 	std::string ident;
 	std::vector<ASMInstruction *>instructions;
+	std::vector<std::string>arguments;
 	int stack_counter = 0;
 
 	ASMFunction(bool is_public,std::string ident)
@@ -63,6 +65,43 @@ public:
 		this->stack_counter = stack_counter;
 	}
 };
+
+
+
+enum class ASMType
+{
+	I32,
+	I64,
+};
+
+class ASMGlobalVariable
+{
+public:
+	bool is_public;
+	std::string ident;
+	int int_init = 0;
+	ASMType data_type;
+	void *data;
+	
+
+	ASMGlobalVariable(bool is_public,std::string ident)
+	{
+		this->ident = ident;
+		this->is_public = is_public;
+	}
+
+	void add_data(ASMType data_type,void *data)
+	{
+		this->data_type = data_type;
+		this->data = data;
+	}
+
+
+
+};
+
+
+
 
 
 class ASMInstruction
