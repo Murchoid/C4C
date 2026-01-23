@@ -31,6 +31,9 @@ private:
     const std::string &file_name;
     const std::string &file_source;
     std::unordered_map<std::string, std::string> defines;
+    bool has_errors;
+    std::vector<std::string> errors; /* To store the errors encountered*/
+    int row;
 
     /* Preprocessor internal states */
 
@@ -47,6 +50,8 @@ public:
     Preprocessor(std::string &filename, std::string &source)
         : file_name(filename), file_source(source)
     {
+        this->has_errors = false;
+        this->row = 0;
     }
 
 
@@ -71,6 +76,12 @@ public:
      * as parameter and uses it to check whether the next 8 characters equal to the word
      * "@define ", take note of the space after define, if they are equal it returns true,
      * meaning its the begining of a macro definition.
+     * 
+     * `update_row()` -> this increaments the value of row, row is basically the number of lines
+     * in the file.
+     * 
+     * `print_errors` -> it does as the name suggests, it prints out the errors encounterd in the
+     * preprocessor.
      */
 
     inline bool is_inline_comment(size_t curr) const
@@ -109,7 +120,21 @@ public:
     }
 
 
+    void updateRow()
+    {
+        this->row++;
+    }
 
+    void print_errors()
+    {
+        if(this->has_errors)
+        {
+            for(std::string error : errors)
+            {
+                DEBUG_PRINT("", error);
+            }
+        }
+    }
     /*>>>>>>>>>>>> Major processing function <<<<<<<<<<<<<<<<*/
     /**
      * 
@@ -178,6 +203,10 @@ public:
                 {
                     state = State::BLOCKCOMMENT;
                 }
+                else if (c == '\n')
+                {
+                    updateRow();
+                }
                 else
                 {
                     /* Handle normal code and macro substitution */ 
@@ -212,6 +241,7 @@ public:
                 while (i < len && file_source[i] != '\n')
                     i++;
                 output += "\n";  /* We add this because the loop consumes the new line character at the end*/
+                updateRow();      /* We update because of the new line added above*/
                 state = State::NORMAL;
                 break;
 
@@ -239,6 +269,7 @@ public:
                 defines[macro] = value;
 
                 state = State::NORMAL;
+                updateRow();
             }
             break;
 
@@ -246,6 +277,7 @@ public:
             case State::BLOCKCOMMENT:
                 while (i < len - 1)
                 {
+                    if(c == '\n') updateRow();
                     if (is_block_comment_closed(i))
                     {
                         i += 1; /* skip the closing '/' */
@@ -254,6 +286,13 @@ public:
                     }
                     else
                         i++;
+                }
+
+                /* If the state is normal means a closing block comment was not found*/
+                if(state == State::BLOCKCOMMENT)
+                {
+                    this->has_errors = true;
+                    this->errors.push_back("No closing */ for block comment was found, please add (*/)");
                 }
                 break;
 
