@@ -14,7 +14,7 @@
  *                  to run the program,                                                             *
  *                  `p.run()`                                                                       *
  *                                                                                                  *
- ****************************************************************************************************/
+ \***************************************************************************************************/
 
 
 
@@ -52,6 +52,26 @@ public:
 
 
     /*>>>>>>>>>>>> Helper functions <<<<<<<<<<<<<<<<*/
+    /**
+     * `is_inline_comment(size_t curr)` -> this function takes the current position of the index
+     * as parameter and uses to check whether the next character is a forward slash, which would indicate
+     * that the line is a comment.
+     * 
+     * `is_block_comment(size_t curr)` -> this function takes the current position of the index
+     * as parameter and uses it to check whether the next character is an asterisk (*)
+     * inidicating the beginning of a block comment.
+     * 
+     * `is_block_comment_closed(size_t curr)` -> takes in the current position of the index
+     * as parameter and uses it to check whether the current character is an asterisk(*) and whether
+     * the next is a forward slash. If these two conditions are met, then that means its the closing of
+     * a block comment.
+     * 
+     * 
+     * `is_define(size_t curr)` -> this funtion takes in the current position of the index
+     * as parameter and uses it to check whether the next 8 characters equal to the word
+     * "@define ", take note of the space after define, if they are equal it returns true,
+     * meaning its the begining of a macro definition.
+     */
 
     inline bool is_inline_comment(size_t curr) const
     {
@@ -77,13 +97,13 @@ public:
     {
         if (curr + 8 >= file_source.length())
             return false;                       /* avoid overflow */
-
+        
         char buff[9];
         for (size_t j = 0; j < 8; j++)
         {
             buff[j] = file_source[curr + j];
         }
-        buff[8] = '\0';
+        buff[9] = '\0';
 
         return strcmp(buff, "@define ") == 0;
     }
@@ -91,7 +111,39 @@ public:
 
 
     /*>>>>>>>>>>>> Major processing function <<<<<<<<<<<<<<<<*/
-
+    /**
+     * 
+     * This is the main function, it scans through the source (contents of the file)
+     * to look for comments and macro definitions.
+     * It uses the 5 states of the `State` enum:
+     * 
+     * NORMAL       : just a normal character
+     * LINECOMMENT  : a line comment (//)                  
+     * HASHCOMMENT  : a hash comment (#)
+     * BLOCKCOMMENT : a block comment (/** *//*)                  
+     * DEFINE       : a "@define" declaration
+     * 
+     * The function uses a switch to detect states;
+     * -if the current character is a forward slash (/) and the current state is NORMAL,
+     *  we use the helper functions `is_inline_comment()` and `is_block_comment()` to check
+     *  whether this is the begining of a comment 
+     * 
+     * -if the current state is LINECOMMENT or BLOCKCOMMENT, 
+     *  all the characters are ignored until a new line character is reached for LINECOMMENT's
+     *  case or a closing block comment is found for BLOCKCOMMENT's case.
+     * 
+     * -if the current character is '@' and the current state is NORMAL, 
+     *  we use the `is_define()` helper function to check whether it is the beginning of a macro
+     * 
+     * -if the current state is DEFINE, we detect the 'name' of the macro and the 'value'
+     *  and store them in the `defines` map.
+     * 
+     * The function start at the NORMAL state and checks for the above conditions, if the current character
+     * is not a character that could lead to a comment (/, #), or a macro definition (@), 
+     * we handle the macro substitution if there were any defined.
+     * The core idea is, if a word matches the key to the `defines` map, it is replaced by the value of the key
+     * 
+     */
     std::string run()
     {
         std::string output;
