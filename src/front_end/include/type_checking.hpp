@@ -568,6 +568,20 @@ public:
 	{
 		switch (expr->type)
 		{
+            case ASTExpressionType::I32:
+            {
+                ASTI32Expr *i32_expr = (ASTI32Expr *)expr->expr;
+                i32_expr->add_data_type(DataType::I32);
+                expr->add_data_type(i32_expr->data_type);
+                break;
+            }
+            case ASTExpressionType::I64:
+            {
+                ASTI64Expr *i64_expr = (ASTI64Expr *)expr->expr;
+                i64_expr->add_data_type(DataType::I64);
+                expr->add_data_type(i64_expr->data_type);
+                break;
+            }
             case ASTExpressionType::CAST:
             {
                 ASTCastExpr *cast_expr = (ASTCastExpr *)expr->expr;

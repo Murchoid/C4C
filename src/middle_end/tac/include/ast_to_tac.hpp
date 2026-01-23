@@ -18,7 +18,10 @@ public:
 	std::string global_label;
 	int global_counter = 0;
 
-	AstToTac(std::string file_name,ASTProgram *ast_program,Arena *arena,int global_counter,SymbolTable symbol_table)
+	SymbolTable *symbols;
+	SymbolTable symbol_table;
+
+	AstToTac(std::string file_name,ASTProgram *ast_program,Arena *arena,int global_counter,SymbolTable symbol_table):symbol_table(symbol_table)
 	{
 		this->file_name = file_name;
 		this->ast_program = ast_program;
@@ -30,8 +33,9 @@ public:
 		void *mem = alloc(sizeof(TACProgram));
 		this->program = new(mem) TACProgram();
 
+		this->symbols = &this->symbol_table;
 
-		convert_symbols_to_tac(symbol_table);
+		convert_symbols_to_tac(this->symbols);
 
 		for (ASTDeclaration *decl : this->ast_program->decls)
 		{
@@ -50,9 +54,9 @@ public:
 	}
 
 
-	void convert_symbols_to_tac(SymbolTable symbol_table)
+	void convert_symbols_to_tac(SymbolTable *symbol_table)
 	{
-		for (auto it = symbol_table.table.begin(); it != symbol_table.table.end(); ++it)
+		for (auto it = symbol_table->table.begin(); it != symbol_table->table.end(); ++it)
         {
 			std::string name = it->first;
             Symbol symbol = it->second;
@@ -408,34 +412,39 @@ public:
 		TACValue *value = nullptr;
 		switch (expr->type)
 		{
+			case ASTExpressionType::CAST:
+			{
+				value = convert_cast_expr(expr->expr,expr->data_type);
+				break;
+			}
 			case ASTExpressionType::I32:
 			{
-				value = convert_i32_expr(expr->expr);
+				value = convert_i32_expr(expr->expr,expr->data_type);
 				break;
 			}
 			case ASTExpressionType::FUNCTION_CALL:
 			{
-				value = convert_function_call_expr(expr->expr);
+				value = convert_function_call_expr(expr->expr,expr->data_type);
 				break;
 			}
 			case ASTExpressionType::VARIABLE:
 			{
-				value = convert_variable_expr(expr->expr);
+				value = convert_variable_expr(expr->expr,expr->data_type);
 				break;
 			}
 			case ASTExpressionType::ASSIGN:
 			{
-				value = convert_assign_expr(expr->expr);
+				value = convert_assign_expr(expr->expr,expr->data_type);
 				break;
 			}
 			case ASTExpressionType::UNARY:
 			{
-				value = convert_unary_expr(expr->expr);
+				value = convert_unary_expr(expr->expr,expr->data_type);
 				break;
 			}
 			case ASTExpressionType::BINARY:
 			{
-				value = convert_binary_expr(expr->expr);
+				value = convert_binary_expr(expr->expr,expr->data_type);
 				break;
 			}
 		}
@@ -448,12 +457,12 @@ public:
 	}
 
 
-	TACValue *convert_function_call_expr(void *expr)
+	TACValue *convert_function_call_expr(void *expr,DataType expr_type)
 	{
 		ASTFunctionCallExpr *fn_expr = (ASTFunctionCallExpr *)expr;
 
 
-		std::string tac_dst_ident = make_tmp();
+		std::string tac_dst_ident = make_tmp2(expr_type);
 
 		void *mem = alloc(sizeof(TACVariable));
 		TACVariable *tac_var = new(mem) TACVariable(tac_dst_ident);
@@ -477,7 +486,7 @@ public:
 	}
 
 
-	TACValue *convert_variable_expr(void *expr)
+	TACValue *convert_variable_expr(void *expr,DataType expr_type)
 	{
 		ASTVariableExpr *var_expr = (ASTVariableExpr *)expr;
 
@@ -492,7 +501,7 @@ public:
 	}
 
 
-	TACValue *convert_assign_expr(void *expr)
+	TACValue *convert_assign_expr(void *expr,DataType expr_type)
 	{
 		ASTAssignExpr *assign_expr = (ASTAssignExpr *)expr;
 		TACValue *tac_dst = convert_expr(assign_expr->lhs);
@@ -507,31 +516,83 @@ public:
 		return tac_dst;
 	}
 	
+
+
+	TACValue *convert_cast_expr(void *expr,DataType expr_type)
+	{
+		ASTCastExpr *cast_expr = (ASTCastExpr *)expr;
+		TACValue *tac_result = convert_expr(cast_expr->rhs);
+
+		if (cast_expr->data_type == cast_expr->rhs->data_type)
+		{
+			return tac_result;
+		}
+
+		std::string tac_dst_ident = make_tmp2(expr_type);
+
+		void *mem = alloc(sizeof(TACVariable));
+		TACVariable *tac_var = new(mem) TACVariable(tac_dst_ident);
+
+		mem = alloc(sizeof(TACValue));
+		TACValue *tac_dst = new(mem)TACValue(TACValueType::VARIABLE,tac_var);
+
+		
+		switch (cast_expr->data_type)
+		{
+			case DataType::I32:
+			{
+				mem = alloc(sizeof(TACTruncateInst));
+				TACTruncateInst *tac_cast = new(mem)TACTruncateInst(tac_result,tac_dst);
+
+				mem = alloc(sizeof(TACInstruction));
+				this->inst->push_back(new(mem) TACInstruction(TACInstructionType::TRUNCATE,tac_cast));
+		
+				break;
+			}
+			case DataType::I64:
+			{
+				mem = alloc(sizeof(TACSignExtendInst));
+				TACSignExtendInst *tac_cast = new(mem)TACSignExtendInst(tac_result,tac_dst);
+
+				mem = alloc(sizeof(TACInstruction));
+				this->inst->push_back(new(mem) TACInstruction(TACInstructionType::SIGN_EXTEND,tac_cast));
+		
+				break;
+			}
+			default:
+			{
+				break;
+			}
+		}
+
+
+		return tac_dst;
+	}
 	
 
-	TACValue *convert_binary_expr(void *expr)
+	TACValue *convert_binary_expr(void *expr,DataType expr_type)
 	{
 		TACValue *tac_dst = nullptr;
 		ASTBinaryExpr *bin_expr = (ASTBinaryExpr *)expr;
 
 		if (bin_expr->op == ASTBinaryOperator::AND)
 		{
-			tac_dst = convert_binary_and(expr);
+			tac_dst = convert_binary_and(expr,expr_type);
 		}
 		else if(bin_expr->op == ASTBinaryOperator::OR)
 		{
-			tac_dst = convert_binary_or(expr);
+			tac_dst = convert_binary_or(expr,expr_type);
 		}
 		else
 		{
-			tac_dst = convert_binary_normal(expr);
+			tac_dst = convert_binary_normal(expr,expr_type);
 		}
 		
 		
 		return tac_dst;
 	}
 
-	TACValue *convert_binary_and(void *expr)
+	TACValue *convert_binary_and(void *expr,DataType expr_type)
 	{
 		std::string false_label_ident = make_label();
 
@@ -556,7 +617,7 @@ public:
 
 
 
-		std::string tac_dst_ident = make_tmp();
+		std::string tac_dst_ident = make_tmp2(expr_type);
 
 		mem = alloc(sizeof(TACVariable));
 		TACVariable *tac_var = new(mem) TACVariable(tac_dst_ident);
@@ -630,7 +691,7 @@ public:
 	}
 
 
-	TACValue *convert_binary_or(void *expr)
+	TACValue *convert_binary_or(void *expr,DataType expr_type)
 	{
 		std::string false_label_ident = make_label();
 
@@ -655,7 +716,7 @@ public:
 
 
 
-		std::string tac_dst_ident = make_tmp();
+		std::string tac_dst_ident = make_tmp2(expr_type);
 
 		mem = alloc(sizeof(TACVariable));
 		TACVariable *tac_var = new(mem) TACVariable(tac_dst_ident);
@@ -731,13 +792,13 @@ public:
 
 
 
-	TACValue *convert_binary_normal(void *expr)
+	TACValue *convert_binary_normal(void *expr,DataType expr_type)
 	{
 		TACValue *tac_src1 = convert_expr(((ASTBinaryExpr *)expr)->lhs);
 		TACValue *tac_src2 = convert_expr(((ASTBinaryExpr *)expr)->rhs);
 
 
-		std::string tac_dst_ident = make_tmp();
+		std::string tac_dst_ident = make_tmp2(expr_type);
 
 		void *mem = alloc(sizeof(TACVariable));
 		TACVariable *tac_var = new(mem) TACVariable(tac_dst_ident);
@@ -756,11 +817,11 @@ public:
 		return tac_dst;
 	}
 
-	TACValue *convert_unary_expr(void *expr)
+	TACValue *convert_unary_expr(void *expr,DataType expr_type)
 	{
 		TACValue *tac_src = convert_expr(((ASTUnaryExpr *)expr)->rhs);
 
-		std::string tac_dst_ident = make_tmp();
+		std::string tac_dst_ident = make_tmp2(expr_type);
 
 		void *mem = alloc(sizeof(TACVariable));
 		TACVariable *tac_var = new(mem) TACVariable(tac_dst_ident);
@@ -781,7 +842,7 @@ public:
 	}
 
 
-	TACValue *convert_i32_expr(void *expr)
+	TACValue *convert_i32_expr(void *expr,DataType expr_type)
 	{
 		TACConstant *tac_const = convert_i32_constant((ASTI32Expr *)expr);
 		void *mem = alloc(sizeof(TACValue));
@@ -872,7 +933,19 @@ public:
 
 	std::string make_tmp(std::string base = "")
 	{
-		return this->global_ident + "." + std::to_string(this->global_counter++) ; 
+		std::string name = this->global_ident + "." + std::to_string(this->global_counter++);
+		return name;
+	}
+
+	std::string make_tmp2(DataType type,std::string base="")
+	{
+		std::string name = make_tmp(base);
+		Symbol symbol(name,type,true);
+		symbol.add_global(false);
+		symbol.add_public(false);
+		this->symbols->add(name,symbol);
+
+		return name;
 	}
 
 	std::string make_label(std::string base = "")
