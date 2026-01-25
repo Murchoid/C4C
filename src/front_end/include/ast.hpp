@@ -59,6 +59,7 @@ enum class ASTDeclarationType
 	VARDECL,
 	FUNCTION,
 	NATIVE,
+	ENUM,
 };
 
 
@@ -74,6 +75,48 @@ public:
 		this->decl = decl;
 	}
 };
+
+
+class ASTEnumConstant
+{
+public:
+	std::string ident;
+	int value;
+	bool has_value = false;
+
+	ASTEnumConstant(std::string ident,int value,bool has_value)
+	{
+		this->ident = ident;
+		this->value = value;
+		this->has_value = has_value;
+	}
+};
+
+
+
+class ASTEnumDecl
+{
+public:
+	std::string ident;
+	std::vector<ASTEnumConstant *>constants;
+	bool is_public = false;
+	
+	void add_constant(ASTEnumConstant *constant)
+	{
+		this->constants.push_back(constant);
+	}
+
+	void add_ident(std::string ident)
+	{
+		this->ident = ident;
+	}
+
+	void add_public(bool is_public)
+	{
+		this->is_public = is_public;
+	}
+};
+
 
 class ASTBox
 {
@@ -96,6 +139,10 @@ enum class ASTDataType
 {
 	I32,
 	I64,
+	U32,
+	U64,
+	F32,
+	F64,
 };
 
 
@@ -454,6 +501,11 @@ enum class ASTExpressionType
 	FUNCTION_CALL,
 	I64,
 	CAST,
+	U32,
+	U64,
+	F32,
+	F64,
+	RESOLUTION,
 };
 
 
@@ -534,11 +586,108 @@ public:
 		this->data_type = data_type;
 	}
 
-	ASTI64Expr(int value)
+	ASTI64Expr(long int value)
 	{
 		this->value = value;
 	}
 };
+
+
+
+
+
+class ASTU32Expr
+{
+public:
+	unsigned int value;
+	DataType data_type;
+	void add_data_type(DataType data_type)
+	{
+		this->data_type = data_type;
+	}
+
+	ASTU32Expr(unsigned int value)
+	{
+		this->value = value;
+	}
+};
+
+
+class ASTU64Expr
+{
+public:
+	unsigned long int value;
+	DataType data_type;
+
+	void add_data_type(DataType data_type)
+	{
+		this->data_type = data_type;
+	}
+
+	ASTU64Expr(unsigned long int value)
+	{
+		this->value = value;
+	}
+};
+
+
+
+
+
+class ASTF32Expr
+{
+public:
+	float value;
+	DataType data_type;
+	void add_data_type(DataType data_type)
+	{
+		this->data_type = data_type;
+	}
+
+	ASTF32Expr(float value)
+	{
+		this->value = value;
+	}
+};
+
+
+class ASTF64Expr
+{
+public:
+	double value;
+	DataType data_type;
+
+	void add_data_type(DataType data_type)
+	{
+		this->data_type = data_type;
+	}
+
+	ASTF64Expr(double value)
+	{
+		this->value = value;
+	}
+};
+
+
+
+
+class ASTResolutionExpr
+{
+public:
+	std::vector<std::string> idents;
+	DataType data_type;
+
+	void add_data_type(DataType data_type)
+	{
+		this->data_type = data_type;
+	}
+
+	void add_ident(std::string ident)
+	{
+		this->idents.push_back(ident);
+	}
+};
+
 
 
 class ASTVariableExpr

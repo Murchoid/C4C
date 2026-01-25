@@ -104,6 +104,11 @@ public:
     {
         switch (decl->type)
 		{
+            case ASTDeclarationType::ENUM:
+			{
+				resolve_enum_decl((ASTEnumDecl *)decl->decl,ident_map);
+				break;
+			}
 			case ASTDeclarationType::FUNCTION:
 			{
 				resolve_function((ASTFunctionDecl *)decl->decl,ident_map);
@@ -139,6 +144,36 @@ public:
     }
 
 
+    void resolve_enum_decl(ASTEnumDecl *decl,Map *ident_map)
+    {
+        if (ident_map->lookup(decl->ident) and ident_map->get_current(decl->ident))
+        {
+            fatal("redeclared enum " + decl->ident);
+        }
+
+        std::string enum_ident = decl->ident;
+
+        ident_map->add(decl->ident,MapEntry(decl->ident,true,true));
+
+        for(ASTEnumConstant *enum_constant : decl->constants)
+        {
+            if(enum_constant == nullptr)
+			{
+				continue;
+			}
+
+            std::string ident = enum_constant->ident;
+            std::string constant_ident = "__C4_" + enum_ident + "_" + ident;
+            if (ident_map->lookup(constant_ident) and ident_map->get_current(constant_ident))
+            {
+                fatal("redeclared enum constant " + ident + " in enum `" + enum_ident + "`");
+            }
+            
+            ident_map->add(decl->ident,MapEntry(constant_ident,true,true));
+            enum_constant->ident = constant_ident;
+        }
+
+    }
     
 
     void resolve_function(ASTFunctionDecl *decl,Map *ident_map)
@@ -315,6 +350,7 @@ public:
 
                 resolve_expr(assign_expr->lhs,ident_map);
                 resolve_expr(assign_expr->rhs,ident_map);
+
                 break;
             }
             case ASTExpressionType::VARIABLE:
@@ -364,6 +400,13 @@ public:
                 ASTUnaryExpr *unary_expr = (ASTUnaryExpr *)expr->expr;
 
                 resolve_expr(unary_expr->rhs,ident_map);
+                break;
+            }
+            case ASTExpressionType::CAST:
+			{
+                ASTCastExpr *cast_expr = (ASTCastExpr *)expr->expr;
+
+                resolve_expr(cast_expr->rhs,ident_map);
                 break;
             }
             case ASTExpressionType::BINARY:

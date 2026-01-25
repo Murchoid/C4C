@@ -8,6 +8,8 @@
 #include "front_end/include/loop_labelling.hpp"
 
 
+#include "middle_end/C/include/ast_to_c.hpp"
+#include "middle_end/JS/include/ast_to_js.hpp"
 
 #include "middle_end/tac/include/ast_to_tac.hpp"
 #include "back_end/x86_64/include/tac_to_intel64.hpp"
@@ -47,10 +49,20 @@ int main(int argc,char *argv[])
 
 		IdentifierResolution resolve(file_name,parser.program);
 
+
+		AstToC C(file_name,resolve.program);
+		StringToFile(file_name.substr(0, file_name.length() - 3) + ".c",C.string);
+
+		AstToJS JS(file_name,resolve.program);
+		StringToFile(file_name.substr(0, file_name.length() - 3) + ".js",JS.string);
+		
+		
+		/*
+
 		TypeChecking type_check(file_name,resolve.program);
+		DEBUG_PRINT("sanity check : ", " after resolve ");
 		
 		LoopLabelling loop_label(file_name,type_check.program,resolve.global_counter);
-
 
 		AstToTac tac(file_name,loop_label.program,&arena,loop_label.global_counter,type_check.table);
 
@@ -66,5 +78,6 @@ int main(int argc,char *argv[])
 		Codegen gen(file_name,intel.program);
 		DEBUG_PRINT("sanity check : ", " after codegen");
 		StringToFile(file_name.substr(0, file_name.length() - 3) + ".asm",gen.string);
+		*/
 	}
 }

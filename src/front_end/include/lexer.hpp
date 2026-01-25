@@ -218,12 +218,16 @@ private:
 			if( match_token('.') and is_digit(1) )
 			{
 				if(!this->has_errors)
+				{
 					this->has_errors = true;
+				}
 				
 				add_token(TokenType::TOKEN_ERROR_MALFORMED_NUMBER);
 			}
 			else
+			{
 				add_token(TokenType::TOKEN_LITERAL_FLOAT,buf);
+			}
 		}
 		else
 		{
@@ -394,6 +398,11 @@ private:
 		{
 			add_token(TokenType::TOKEN_KEYWORD_ELIF,buf);
 		}
+
+		else if (match_keyword(buf,"enum"))
+		{
+			add_token(TokenType::TOKEN_KEYWORD_ENUM,buf);
+		}
 		else if (match_keyword(buf,"extern"))
 		{
 			add_token(TokenType::TOKEN_KEYWORD_EXTERN,buf);
@@ -402,6 +411,14 @@ private:
 		{
 			//DEBUG_PRINT("fn " ," found");
 			add_token(TokenType::TOKEN_KEYWORD_FN,buf);
+		}
+		else if (match_keyword(buf,"f32"))
+		{
+			add_token(TokenType::TOKEN_KEYWORD_F32,buf);
+		}
+		else if (match_keyword(buf,"f64"))
+		{
+			add_token(TokenType::TOKEN_KEYWORD_F64,buf);
 		}
 		else if (match_keyword(buf,"i8"))
 		{
@@ -442,6 +459,22 @@ private:
 		else if (match_keyword(buf,"while"))
 		{
 			add_token(TokenType::TOKEN_KEYWORD_WHILE,buf);
+		}
+		else if (match_keyword(buf,"u8"))
+		{
+			add_token(TokenType::TOKEN_KEYWORD_U8,buf);
+		}
+		else if (match_keyword(buf,"u16"))
+		{
+			add_token(TokenType::TOKEN_KEYWORD_U16,buf);
+		}
+		else if (match_keyword(buf,"u32"))
+		{
+			add_token(TokenType::TOKEN_KEYWORD_U32,buf);
+		}
+		else if (match_keyword(buf,"u64"))
+		{
+			add_token(TokenType::TOKEN_KEYWORD_U64,buf);
 		}
 		else
 		{
@@ -622,7 +655,10 @@ private:
 				 make_string();
 				 break;
 			 case ':':
-				add_token_single(TokenType::TOKEN_COLON);
+			 	if ( match_token(':',1))
+				    add_token_double(TokenType::TOKEN_RESOLUTION,"::");
+				else
+					add_token_single(TokenType::TOKEN_COLON);
 				break;
 			 case '~':
 				add_token_single(TokenType::TOKEN_TILDE);

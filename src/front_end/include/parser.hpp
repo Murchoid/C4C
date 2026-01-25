@@ -122,6 +122,10 @@ public:
 		{
 			return TokenType::TOKEN_KEYWORD_ELSE;
 		}
+		else if (keyword == "enum")
+		{
+			return TokenType::TOKEN_KEYWORD_ENUM;
+		}
 		else if (keyword == "i32")
 		{
 			return TokenType::TOKEN_KEYWORD_I32;
@@ -129,6 +133,14 @@ public:
 		else if (keyword == "i64")
 		{
 			return TokenType::TOKEN_KEYWORD_I64;
+		}
+		else if (keyword == "u32")
+		{
+			return TokenType::TOKEN_KEYWORD_U32;
+		}
+		else if (keyword == "u64")
+		{
+			return TokenType::TOKEN_KEYWORD_U64;
 		}
 		else if (keyword == "native")
 		{
@@ -228,6 +240,10 @@ public:
 		else if (symbol == "!")
 		{
 			return TokenType::TOKEN_NOT;
+		}
+		else if (symbol == "::")
+		{
+			return TokenType::TOKEN_RESOLUTION;
 		}
 		else if (symbol == "=")
 		{
@@ -341,6 +357,14 @@ public:
 			return true;
 		}
 		else if (token.type == TokenType::TOKEN_KEYWORD_I64)
+		{
+			return true;
+		}
+		else if (token.type == TokenType::TOKEN_KEYWORD_U32)
+		{
+			return true;
+		}
+		else if (token.type == TokenType::TOKEN_KEYWORD_U64)
 		{
 			return true;
 		}
@@ -542,6 +566,7 @@ public:
 	 * - Function declarations
 	 * - Variable declarations
 	 * - Native (extern) declarations
+	 * - enums
 	 */
 
 	ASTDeclaration *parse_decl()
@@ -574,6 +599,11 @@ public:
 					ASTFunctionDecl *decl_val = parse_fn_decl(true);
 					decl = new(mem) ASTDeclaration(ASTDeclarationType::FUNCTION,decl_val);
 				}
+				else if (match_keyword("enum"))
+				{
+					ASTEnumDecl *decl_val = parse_enum_decl(true);
+					decl = new(mem) ASTDeclaration(ASTDeclarationType::ENUM,decl_val);
+				}
 				else if (match_type())
 				{
 					ASTVarDecl *decl_val = parse_vardecl(true);
@@ -589,6 +619,12 @@ public:
 			{
 				ASTFunctionDecl *decl_val2 = parse_fn_decl();		
 				decl = new(mem) ASTDeclaration(ASTDeclarationType::FUNCTION,decl_val2);
+				break;
+			}
+			case TokenType::TOKEN_KEYWORD_ENUM:
+			{
+				ASTEnumDecl *decl_val = parse_enum_decl();		
+				decl = new(mem) ASTDeclaration(ASTDeclarationType::ENUM,decl_val);
 				break;
 			}
 			case TokenType::TOKEN_KEYWORD_NATIVE:
@@ -620,10 +656,59 @@ public:
 	}
 
 	/**
+	 * This function parses an enum declaration
+	 */
+	ASTEnumDecl *parse_enum_decl(bool is_public = false)
+	{
+		void *mem = alloc(sizeof(ASTEnumDecl));
+		ASTEnumDecl *decl = new(mem) ASTEnumDecl();
+		decl->add_public(is_public);
+
+		expect_keyword("enum");
+		if (match_identifier())
+		{
+			decl->add_ident(consume().string);
+		}
+
+		expect_symbol(":");
+
+		while (not is_token(":"))
+		{
+			if (match_identifier())
+			{
+				std::string ident = consume().string;
+				int value = 0;
+				bool has_value = false;
+
+				if (is_token("="))
+				{
+					consume();
+					value = std::stoi(consume().string);
+					has_value = true;
+				}
+			
+				mem = alloc(sizeof(ASTEnumConstant));
+				ASTEnumConstant *enum_constant = new(mem) ASTEnumConstant(ident,value,has_value);
+
+				decl->add_constant(enum_constant);
+
+				if (is_token(":"))
+				{
+					break;
+				}
+			}
+		}
+
+		expect_symbol(":");
+
+		return decl;
+	}
+
+	/**
 	 * Parses a native declaration block.
 	 * Used to declare externally implemented functions.
 	 */
-
+	
 	ASTNativeDecl *parse_native_decl()
 	{
 		void *mem =  alloc(sizeof(ASTNativeDecl));
@@ -781,14 +866,24 @@ public:
 				data_type = ASTDataType::I32;
 				consume();
 			}
-			if (is_token_string("i64"))
+			else if (is_token_string("i64"))
 			{
 				data_type = ASTDataType::I64;
 				consume();
 			}
+			else if (is_token_string("u32"))
+			{
+				data_type = ASTDataType::U32;
+				consume();
+			}
+			else if (is_token_string("u64"))
+			{
+				data_type = ASTDataType::U64;
+				consume();
+			}
 			else
 			{
-				DEBUG_PRINT("  sanity check ",(*(peek())).get_type());
+				DEBUG_PRINT("  parse type : sanity check ",(*(peek())).get_type() + " =>  " + (*(peek())).string);
 			}
 
 			type->add_type(data_type);
@@ -1158,6 +1253,10 @@ public:
 		return is_token("-") or is_token("+") or is_token("*") or is_token("%") or is_token("/") or is_token("<") or is_token(">") or is_token("<=") or is_token(">=") or is_token("||") or is_token("&&")  or is_token("=");
 	}
 
+	/**
+	 * The function returns the assign operator (=)
+	 */
+
 	ASTAssignOperator get_assign_op(Tokens token)
 	{
 		switch (token.type)
@@ -1173,6 +1272,10 @@ public:
 	}
 
 	
+	/**
+	 * This function returns the unary operator
+	 */
+
 	ASTUnaryOperator get_unary_op(Tokens token)
 	{
 		switch (token.type)
@@ -1348,12 +1451,18 @@ public:
 		{
 			Tokens token = consume();
 			int num = std::stoi(token.string);
-			if (num > ( std::pow(2,63) - 1))
+			if (num > ( std::pow(2,64)))
 			{
 				fatal("integer constant is too large (larger than 64 bits) ");
 			}
-
-			if (num > (std::pow(2,31) - 1))
+			else if ((num > (std::pow(2,63) - 1)) and (num <= (std::pow(2,64))) )
+			{
+				void *mem = alloc(sizeof(ASTU64Expr));
+				ASTU64Expr *u64_expr = new(mem) ASTU64Expr(num);
+				mem = alloc(sizeof(ASTExpression));
+				expr = new(mem) ASTExpression(ASTExpressionType::U64,u64_expr);
+			}
+			else if (num > (std::pow(2,31) - 1))
 			{
 				void *mem = alloc(sizeof(ASTI64Expr));
 				ASTI64Expr *i64_expr = new(mem) ASTI64Expr(num);
@@ -1364,7 +1473,6 @@ public:
 			{
 				void *mem = alloc(sizeof(ASTI32Expr));
 				ASTI32Expr *i32_expr = new(mem) ASTI32Expr(num);
-				std::cout << " parser i32_expr : " << i32_expr->value << std::endl;
 				mem = alloc(sizeof(ASTExpression));
 				expr = new(mem) ASTExpression(ASTExpressionType::I32,i32_expr);
 			}
@@ -1378,6 +1486,42 @@ public:
 			mem = alloc(sizeof(ASTExpression));
 			expr = new(mem) ASTExpression(ASTExpressionType::UNARY,expr1);
 		}
+		else if (is_token_type(TokenType::TOKEN_LITERAL_FLOAT))
+		{
+			Tokens token = consume();
+
+			double num = std::stod(token.string);
+
+			if (not std::isfinite(num))
+			{
+				fatal("floating-point constant is not finite");
+			}
+			else if (std::fabs(num) > DBL_MAX)
+			{
+				fatal("floating-point constant is too large (larger than f64)");
+			}
+			else if (std::fabs(num) > FLT_MAX)
+			{
+				// Must be f64
+				void *mem = alloc(sizeof(ASTF64Expr));
+				ASTF64Expr *f64_expr = new(mem) ASTF64Expr(num);
+
+				mem = alloc(sizeof(ASTExpression));
+				expr = new(mem) ASTExpression(ASTExpressionType::F64, f64_expr);
+			}
+			else
+			{
+				// Fits in f32
+				float f32_val = static_cast<float>(num);
+
+				void *mem = alloc(sizeof(ASTF32Expr));
+				ASTF32Expr *f32_expr = new(mem) ASTF32Expr(f32_val);
+
+				mem = alloc(sizeof(ASTExpression));
+				expr = new(mem) ASTExpression(ASTExpressionType::F32, f32_expr);
+			}
+		}
+
 		else if (is_token_string("cast"))
 		{
 			expect_keyword("cast");
@@ -1450,6 +1594,28 @@ public:
 
 				mem = alloc(sizeof(ASTExpression));
 				expr = new(mem) ASTExpression(ASTExpressionType::FUNCTION_CALL,expr1);
+			}
+			else if(is_token("::",1))
+			{
+				void *mem = alloc(sizeof(ASTResolutionExpr));
+				ASTResolutionExpr *expr1 = new(mem) ASTResolutionExpr();
+				expr1->add_ident(consume().string);
+
+				while (is_token("::"))
+				{
+					expect_symbol("::");					
+					if (match_identifier())
+					{
+						expr1->add_ident(consume().string);
+					}
+					else
+					{
+						fatal("expected an identifier after ::");
+					}
+				}
+
+				mem = alloc(sizeof(ASTExpression));
+				expr = new(mem) ASTExpression(ASTExpressionType::RESOLUTION,expr1);
 			}
 			else
 			{
