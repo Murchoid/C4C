@@ -59,6 +59,7 @@ enum class ASTDeclarationType
 	VARDECL,
 	FUNCTION,
 	NATIVE,
+	ENUM,
 };
 
 
@@ -74,6 +75,48 @@ public:
 		this->decl = decl;
 	}
 };
+
+
+class ASTEnumConstant
+{
+public:
+	std::string ident;
+	int value;
+	bool has_value = false;
+
+	ASTEnumConstant(std::string ident,int value,bool has_value)
+	{
+		this->ident = ident;
+		this->value = value;
+		this->has_value = has_value;
+	}
+};
+
+
+
+class ASTEnumDecl
+{
+public:
+	std::string ident;
+	std::vector<ASTEnumConstant *>constants;
+	bool is_public = false;
+	
+	void add_constant(ASTEnumConstant *constant)
+	{
+		this->constants.push_back(constant);
+	}
+
+	void add_ident(std::string ident)
+	{
+		this->ident = ident;
+	}
+
+	void add_public(bool is_public)
+	{
+		this->is_public = is_public;
+	}
+};
+
 
 class ASTBox
 {
@@ -462,6 +505,7 @@ enum class ASTExpressionType
 	U64,
 	F32,
 	F64,
+	RESOLUTION,
 };
 
 
@@ -625,6 +669,24 @@ public:
 };
 
 
+
+
+class ASTResolutionExpr
+{
+public:
+	std::vector<std::string> idents;
+	DataType data_type;
+
+	void add_data_type(DataType data_type)
+	{
+		this->data_type = data_type;
+	}
+
+	void add_ident(std::string ident)
+	{
+		this->idents.push_back(ident);
+	}
+};
 
 
 

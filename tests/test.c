@@ -1,3 +1,10 @@
+enum Color
+{
+	__C4_Color_RED = 1,
+	__C4_Color_GREEN,
+	__C4_Color_BLUE,
+};
+
 unsigned int add(unsigned long int x_c4_tmp.0,unsigned long int y_c4_tmp.1)
 {
 	return x_c4_tmp.0 + y_c4_tmp.1;

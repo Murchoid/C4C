@@ -65,6 +65,10 @@ public:
 		{
 			return TokenType::TOKEN_KEYWORD_ELSE;
 		}
+		else if (keyword == "enum")
+		{
+			return TokenType::TOKEN_KEYWORD_ENUM;
+		}
 		else if (keyword == "i32")
 		{
 			return TokenType::TOKEN_KEYWORD_I32;
@@ -175,6 +179,10 @@ public:
 		else if (symbol == "!")
 		{
 			return TokenType::TOKEN_NOT;
+		}
+		else if (symbol == "::")
+		{
+			return TokenType::TOKEN_RESOLUTION;
 		}
 		else if (symbol == "=")
 		{
@@ -417,6 +425,11 @@ public:
 					ASTFunctionDecl *decl_val = parse_fn_decl(true);
 					decl = new(mem) ASTDeclaration(ASTDeclarationType::FUNCTION,decl_val);
 				}
+				else if (match_keyword("enum"))
+				{
+					ASTEnumDecl *decl_val = parse_enum_decl(true);
+					decl = new(mem) ASTDeclaration(ASTDeclarationType::ENUM,decl_val);
+				}
 				else if (match_type())
 				{
 					ASTVarDecl *decl_val = parse_vardecl(true);
@@ -432,6 +445,12 @@ public:
 			{
 				ASTFunctionDecl *decl_val2 = parse_fn_decl();		
 				decl = new(mem) ASTDeclaration(ASTDeclarationType::FUNCTION,decl_val2);
+				break;
+			}
+			case TokenType::TOKEN_KEYWORD_ENUM:
+			{
+				ASTEnumDecl *decl_val = parse_enum_decl();		
+				decl = new(mem) ASTDeclaration(ASTDeclarationType::ENUM,decl_val);
 				break;
 			}
 			case TokenType::TOKEN_KEYWORD_NATIVE:
@@ -462,6 +481,51 @@ public:
 		return decl;
 	}
 
+	ASTEnumDecl *parse_enum_decl(bool is_public = false)
+	{
+		void *mem = alloc(sizeof(ASTEnumDecl));
+		ASTEnumDecl *decl = new(mem) ASTEnumDecl();
+		decl->add_public(is_public);
+
+		expect_keyword("enum");
+		if (match_identifier())
+		{
+			decl->add_ident(consume().string);
+		}
+
+		expect_symbol(":");
+
+		while (not is_token(":"))
+		{
+			if (match_identifier())
+			{
+				std::string ident = consume().string;
+				int value = 0;
+				bool has_value = false;
+
+				if (is_token("="))
+				{
+					consume();
+					value = std::stoi(consume().string);
+					has_value = true;
+				}
+			
+				mem = alloc(sizeof(ASTEnumConstant));
+				ASTEnumConstant *enum_constant = new(mem) ASTEnumConstant(ident,value,has_value);
+
+				decl->add_constant(enum_constant);
+
+				if (is_token(":"))
+				{
+					break;
+				}
+			}
+		}
+
+		expect_symbol(":");
+
+		return decl;
+	}
 	
 	ASTNativeDecl *parse_native_decl()
 	{
@@ -1264,6 +1328,28 @@ public:
 
 				mem = alloc(sizeof(ASTExpression));
 				expr = new(mem) ASTExpression(ASTExpressionType::FUNCTION_CALL,expr1);
+			}
+			else if(is_token("::",1))
+			{
+				void *mem = alloc(sizeof(ASTResolutionExpr));
+				ASTResolutionExpr *expr1 = new(mem) ASTResolutionExpr();
+				expr1->add_ident(consume().string);
+
+				while (is_token("::"))
+				{
+					expect_symbol("::");					
+					if (match_identifier())
+					{
+						expr1->add_ident(consume().string);
+					}
+					else
+					{
+						fatal("expected an identifier after ::");
+					}
+				}
+
+				mem = alloc(sizeof(ASTExpression));
+				expr = new(mem) ASTExpression(ASTExpressionType::RESOLUTION,expr1);
 			}
 			else
 			{

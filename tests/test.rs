@@ -1,3 +1,9 @@
+enum Color:
+    RED = 1
+    GREEN
+    BLUE
+:
+
 
 fn add(u64 x,u64 y)->u32:
     return x + y

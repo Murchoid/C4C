@@ -398,6 +398,11 @@ private:
 		{
 			add_token(TokenType::TOKEN_KEYWORD_ELIF,buf);
 		}
+
+		else if (match_keyword(buf,"enum"))
+		{
+			add_token(TokenType::TOKEN_KEYWORD_ENUM,buf);
+		}
 		else if (match_keyword(buf,"extern"))
 		{
 			add_token(TokenType::TOKEN_KEYWORD_EXTERN,buf);
@@ -650,7 +655,10 @@ private:
 				 make_string();
 				 break;
 			 case ':':
-				add_token_single(TokenType::TOKEN_COLON);
+			 	if ( match_token(':',1))
+				    add_token_double(TokenType::TOKEN_RESOLUTION,"::");
+				else
+					add_token_single(TokenType::TOKEN_COLON);
 				break;
 			 case '~':
 				add_token_single(TokenType::TOKEN_TILDE);

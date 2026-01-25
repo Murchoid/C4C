@@ -9,6 +9,7 @@
 
 
 #include "middle_end/C/include/ast_to_c.hpp"
+#include "middle_end/JS/include/ast_to_js.hpp"
 
 #include "middle_end/tac/include/ast_to_tac.hpp"
 #include "back_end/x86_64/include/tac_to_intel64.hpp"
@@ -52,6 +53,10 @@ int main(int argc,char *argv[])
 		AstToC C(file_name,resolve.program);
 		StringToFile(file_name.substr(0, file_name.length() - 3) + ".c",C.string);
 
+		AstToJS JS(file_name,resolve.program);
+		StringToFile(file_name.substr(0, file_name.length() - 3) + ".js",JS.string);
+		
+		
 		/*
 
 		TypeChecking type_check(file_name,resolve.program);

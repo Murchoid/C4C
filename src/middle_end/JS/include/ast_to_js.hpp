@@ -1,12 +1,12 @@
-#ifndef C4C_AST_TO_C_H
-#define C4C_AST_TO_C_H
+#ifndef C4C_AST_TO_JS_H
+#define C4C_AST_TO_JS_H
 
 #include "../../../front_end/include/ast.hpp"
 #include <string>
 #include <vector>
 
 
-class AstToC
+class AstToJS
 {
 public:
     std::string file_name;
@@ -19,7 +19,7 @@ public:
 		this->string += string;
 	}
 
-    AstToC(std::string file_name,ASTProgram *program)
+    AstToJS(std::string file_name,ASTProgram *program)
     {
         this->file_name = file_name;
         this->program = program;
@@ -47,11 +47,6 @@ public:
 				convert_function((ASTFunctionDecl *)decl->decl);
 				break;
 			}
-			case ASTDeclarationType::ENUM:
-			{
-				convert_enum_decl((ASTEnumDecl *)decl->decl);
-				break;
-			}
 			default:
 			{
 				DEBUG_PRINT("here "," null tac_decl");
@@ -66,68 +61,11 @@ public:
 		}
 	}
 
-	void convert_enum_decl(ASTEnumDecl *decl)
-	{
-		write_body("enum " + decl->ident + "\n{\n");
-
-		for (ASTEnumConstant *enum_const : decl->constants)
-		{
-			if(enum_const == nullptr)
-			{
-				continue;
-			}
-
-			write_body("\t" + enum_const->ident);
-
-			if(enum_const->has_value)
-			{
-				write_body(" = " + std::to_string(enum_const->value));
-			}
-
-			write_body(",\n");
-		}
-
-		write_body("};\n\n");
-	}
 
 
 	void convert_function(ASTFunctionDecl *decl)
 	{
-		switch(decl->return_type->type)
-		{
-			case ASTDataType::I32:
-			{
-				write_body("int ");
-				break;
-			}
-			case ASTDataType::I64:
-			{
-				write_body("long int ");
-				break;
-			}
-			case ASTDataType::U32:
-			{
-				write_body("unsigned int ");
-				break;
-			}
-			case ASTDataType::U64:
-			{
-				write_body("unsigned long int ");
-				break;
-			}
-			case ASTDataType::F32:
-			{
-				write_body(" ");
-				break;
-			}
-			case ASTDataType::F64:
-			{
-				write_body("double ");
-				break;
-			}
-		}
-
-		write_body(decl->ident + "(");
+		write_body("fn " + decl->ident + "(");
 
 		int arg_length = decl->arguments.size();
 		int i = 0;
@@ -139,47 +77,7 @@ public:
 				continue;
 			}
 
-			std::string data_type;
-
-			switch(arg->type->type)
-			{
-				case ASTDataType::I32:
-				{
-					data_type = "int";
-					break;
-				}
-				case ASTDataType::I64:
-				{
-					data_type = "long int";
-					break;
-				}
-				case ASTDataType::U32:
-				{
-					data_type = "unsigned int";
-					break;
-				}
-				case ASTDataType::U64:
-				{
-					data_type = "unsigned long int";
-					break;
-				}
-				case ASTDataType::F32:
-				{
-					data_type = "float";
-					break;
-				}
-				case ASTDataType::F64:
-				{
-					data_type = "double";
-					break;
-				}
-				default:
-				{
-					break;
-				}
-			}
-
-			write_body(data_type + " " + arg->ident);
+			write_body(arg->ident);
 
 			if(i++ + 1 >= arg_length)
 			{
@@ -309,48 +207,7 @@ public:
 	void convert_vardecl_stmt(ASTVarDecl *stmt,std::string tab)
 	{
 		write_body(tab);
-		std::string data_type;
-
-		switch(stmt->type->type)
-		{
-			case ASTDataType::I32:
-			{
-				data_type = "int ";
-				break;
-			}
-			case ASTDataType::I64:
-			{
-				data_type = "long int ";
-				break;
-			}
-			case ASTDataType::U32:
-			{
-				data_type = "unsigned int ";
-				break;
-			}
-			case ASTDataType::U64:
-			{
-				data_type = "unsigned long int ";
-				break;
-			}
-			case ASTDataType::F32:
-			{
-				data_type = "float ";
-				break;
-			}
-			case ASTDataType::F64:
-			{
-				data_type = "double ";
-				break;
-			}
-			default:
-			{
-				DEBUG_PANIC("tac cast ");
-				break;
-			}
-		}
-
-		write_body(data_type + stmt->ident + " = ");
+		write_body("let " + stmt->ident + " = ");
 		convert_expr(stmt->expr);
 		write_body(";\n");
 	}
