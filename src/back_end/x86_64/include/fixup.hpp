@@ -56,7 +56,7 @@ public:
 		this->inst = &decl->instructions;
 		this->stack_counter = decl->stack_counter;
 
-		int aligned = align(this->stack_counter * 4,8);
+		int aligned = align(this->stack_counter,8);
 		
 		void *mem = alloc(sizeof(ASMRegister));
 		ASMRegister *asm_reg = new(mem) ASMRegister(ASMRegisterType::RSP,8);

@@ -441,7 +441,7 @@ public:
 
     std::string make_tmp(std::string base = "")
 	{
-		return base + this->global_ident + "." + std::to_string(this->global_counter++) ; 
+		return "__c4internal_" + base + this->global_ident + "_" + std::to_string(this->global_counter++) ; 
 	}
 
 

@@ -11,6 +11,7 @@ enum class ASTDeclarationType;
 class ASTDeclaration;
 enum class ASTDataType;
 class ASTType;
+class ASTMethodDecl;
 class ASTFunctionArgument;
 class ASTFunctionDecl;
 class ASTNativeDecl;
@@ -60,6 +61,7 @@ enum class ASTDeclarationType
 	FUNCTION,
 	NATIVE,
 	ENUM,
+	STRUCT,
 };
 
 
@@ -114,6 +116,131 @@ public:
 	void add_public(bool is_public)
 	{
 		this->is_public = is_public;
+	}
+};
+
+
+
+class ASTMethodDecl
+{
+public:
+	bool is_public;
+	ASTType *return_type;
+	std::string ident;
+	bool constructor = false;
+	//ASTBox box;
+	std::vector<ASTFunctionArgument *>arguments;
+	ASTBlockStmt *block;
+
+	ASTMethodDecl()
+	{
+		this->is_public = false;
+		this->return_type = nullptr;
+		this->block = nullptr;
+	}
+
+	inline void add_constructor(bool constructor)
+	{
+		this->constructor = constructor;
+	}
+
+	inline void add_public(int is_public)
+	{
+		this->is_public = is_public;
+	}
+
+	inline void add_return_type(ASTType *return_type)
+	{
+		this->return_type = return_type;
+	}
+	
+	inline void add_ident(std::string ident)
+	{
+		this->ident = ident;
+	}
+
+	inline void add_argument(ASTFunctionArgument *argument)
+	{
+		this->arguments.push_back(argument);
+	}
+	
+	inline void add_block(ASTBlockStmt *block)
+	{
+		this->block = block;
+	}
+};
+
+
+
+class ASTStructProperty
+{
+public:
+	ASTType *type;
+	std::string ident;
+
+	ASTStructProperty(ASTType *type,std::string ident)
+	{
+		this->type = type;
+		this->ident = ident;
+	}
+};
+
+
+class ASTStructDecl
+{
+public:
+	bool is_public;
+	std::string ident;
+	std::vector<ASTStructProperty *>properties;
+	std::vector<ASTMethodDecl *> methods;
+
+	ASTStructDecl()
+	{
+		this->is_public = false;
+	}
+
+	void add_public(bool is_public)
+	{
+		this->is_public = is_public;
+	}
+
+	void add_ident(std::string ident)
+	{
+		this->ident = ident;
+	}
+
+	void add_property(ASTStructProperty *property)
+	{
+		this->properties.push_back(property);
+	}
+
+
+	void add_method(ASTMethodDecl *method)
+	{
+		this->methods.push_back(method);
+	}
+};
+
+
+class ASTImplDecl
+{
+public:
+	std::string ident;
+	std::vector<ASTMethodDecl *> methods;
+
+	ASTImplDecl()
+	{
+		//
+	}
+
+	void add_ident(std::string ident)
+	{
+		this->ident = ident;
+	}
+
+	void add_method(ASTMethodDecl *method)
+	{
+		this->methods.push_back(method);
 	}
 };
 
@@ -562,7 +689,7 @@ public:
 class ASTI32Expr
 {
 public:
-	int value;
+	long int value;
 	DataType data_type;
 	void add_data_type(DataType data_type)
 	{

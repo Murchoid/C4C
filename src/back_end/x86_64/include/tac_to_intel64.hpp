@@ -636,6 +636,7 @@ public:
 		
 		void *mem = alloc(sizeof(ASMMovInst));
 		ASMMovInst *asm_mov = new(mem) ASMMovInst(asm_dst,asm_src);
+		asm_mov->add_type(asm_dst->data_type);
 		
 		mem = alloc(sizeof(ASMInstruction));
 		ASMInstruction *asm_inst = new(mem) ASMInstruction(ASMInstructionType::MOV,asm_mov);
@@ -650,6 +651,7 @@ public:
 		
 		void *mem = alloc(sizeof(ASMMovSxInst));
 		ASMMovSxInst *asm_mov = new(mem) ASMMovSxInst(asm_dst,asm_src);
+		asm_mov->add_type(asm_dst->data_type);
 		
 		mem = alloc(sizeof(ASMInstruction));
 		ASMInstruction *asm_inst = new(mem) ASMInstruction(ASMInstructionType::MOVSX,asm_mov);
@@ -772,15 +774,16 @@ public:
 		asm_inst = new(mem) ASMInstruction(ASMInstructionType::RET,asm_ret);
 		this->inst->push_back(asm_inst);
 	}
-	
 
 
-	void convert_binary_inst(TACBinaryInst *inst)
+
+	void convert_binary_normal(TACBinaryInst *inst)
 	{
 		ASMOperand *asm_dst = convert_value(inst->dst);
 		ASMOperand *asm_src1 = convert_value(inst->src1);
 		ASMOperand *asm_src2 = convert_value(inst->src2);
 		
+
 		void *mem = alloc(sizeof(ASMMovInst));
 		ASMMovInst *asm_mov = new(mem) ASMMovInst(asm_dst,asm_src1);
 		asm_mov->add_type(asm_dst->data_type);
@@ -815,41 +818,20 @@ public:
 
 				break;
 			}
-			case TACBinaryOperator::LESS:
-			{
-				convert_binary_logical(asm_dst,asm_src2,ASMCondition::LESS);
-				break;
-			}
-			case TACBinaryOperator::LESS_EQUAL:
-			{
-				convert_binary_logical(asm_dst,asm_src2,ASMCondition::LESS_EQUAL);
-				break;
-			}
-			case TACBinaryOperator::GREATER:
-			{
-				convert_binary_logical(asm_dst,asm_src2,ASMCondition::GREATER);
-				break;
-			}
-			case TACBinaryOperator::GREATER_EQUAL:
-			{
-				convert_binary_logical(asm_dst,asm_src2,ASMCondition::GREATER_EQUAL);
-				break;
-			}
-			
-			case TACBinaryOperator::None:
-			{
-				DEBUG_PANIC("operator none tac " + std::to_string((int)inst->op));
-				break;
-			}
 		}
-
 	}
+	
 
 
-	void convert_binary_logical(ASMOperand *asm_dst,ASMOperand *asm_src2,ASMCondition condition)
+
+	void convert_binary_logical(TACBinaryInst *inst,ASMCondition condition)
 	{
+		ASMOperand *asm_dst = convert_value(inst->dst);
+		ASMOperand *asm_src1 = convert_value(inst->src1);
+		ASMOperand *asm_src2 = convert_value(inst->src2);
+
 		void *mem = alloc(sizeof(ASMCmpInst));
-		ASMCmpInst *asm_cmp = new(mem) ASMCmpInst(asm_dst,asm_src2);
+		ASMCmpInst *asm_cmp = new(mem) ASMCmpInst(asm_src1,asm_src2);
 		
 		mem = alloc(sizeof(ASMInstruction));
 		ASMInstruction *asm_inst = new(mem) ASMInstruction(ASMInstructionType::CMP,asm_cmp);
@@ -864,9 +846,11 @@ public:
 		
 		mem = alloc(sizeof(ASMOperand));
 		ASMOperand *asm_operand = new(mem) ASMOperand(ASMOperandType::IMMEDIATE,asm_imm);
+		asm_operand->add_type(ASMType::I32);
 
 		mem = alloc(sizeof(ASMMovInst));
 		ASMMovInst *asm_mov = new(mem) ASMMovInst(asm_dst,asm_operand);
+		asm_mov->add_type(ASMType::I32);
 
 		mem = alloc(sizeof(ASMInstruction));
 		asm_inst = new(mem) ASMInstruction(ASMInstructionType::MOV,asm_mov);
@@ -880,6 +864,50 @@ public:
 		this->inst->push_back(asm_inst);
 			
 	}
+
+
+	void convert_binary_inst(TACBinaryInst *inst)
+	{
+
+		switch(inst->op)
+		{
+			case TACBinaryOperator::ADD:
+			case TACBinaryOperator::SUB:
+			{
+				convert_binary_normal(inst);
+				break;
+			}
+			case TACBinaryOperator::LESS:
+			{
+				convert_binary_logical(inst,ASMCondition::LESS);
+				break;
+			}
+			case TACBinaryOperator::LESS_EQUAL:
+			{
+				convert_binary_logical(inst,ASMCondition::LESS_EQUAL);
+				break;
+			}
+			case TACBinaryOperator::GREATER:
+			{
+				convert_binary_logical(inst,ASMCondition::GREATER);
+				break;
+			}
+			case TACBinaryOperator::GREATER_EQUAL:
+			{
+				convert_binary_logical(inst,ASMCondition::GREATER_EQUAL);
+				break;
+			}
+			
+			case TACBinaryOperator::None:
+			{
+				DEBUG_PANIC("operator none tac " + std::to_string((int)inst->op));
+				break;
+			}
+		}
+
+	}
+
+
 
 	void convert_unary_inst(TACUnaryInst *inst)
 	{
@@ -941,12 +969,30 @@ public:
 						void *mem = alloc(sizeof(int));
 						int *asm_value = new(mem) int;
 						*asm_value = *((int *)tac_const->constant);
+						std::cout << " i32 value :   ============================>   " << *asm_value <<std::endl;
 						mem = alloc(sizeof(ASMImmediate));
 						ASMImmediate *asm_imm = new(mem) ASMImmediate(ASMImmediateType::I32,asm_value);
 						mem = alloc(sizeof(ASMOperand));
 						asm_operand = new(mem) ASMOperand(ASMOperandType::IMMEDIATE,asm_imm);
 						asm_operand->add_type(ASMType::I32);
 						break;
+					}
+					case TACConstantType::I64:
+					{
+						void *mem = alloc(sizeof(long int));
+						long int *asm_value = new(mem) long int;
+						*asm_value = *((long int *)tac_const->constant);
+						std::cout << " i64 value :   ============================>   " << *asm_value <<std::endl;
+						mem = alloc(sizeof(ASMImmediate));
+						ASMImmediate *asm_imm = new(mem) ASMImmediate(ASMImmediateType::I64,asm_value);
+						mem = alloc(sizeof(ASMOperand));
+						asm_operand = new(mem) ASMOperand(ASMOperandType::IMMEDIATE,asm_imm);
+						asm_operand->add_type(ASMType::I64);
+						break;
+					}
+					default:
+					{
+						DEBUG_PANIC("unsuppported TAC constant");
 					}
 				}
 				break;
@@ -970,7 +1016,7 @@ public:
 					}
 					default:
 					{
-						std::cout << tac_var->ident + "   |=>" <<  int(tac_var->data_type) << " type " <<std::endl;
+						std::cout << tac_var->ident + "   |=>  " <<  int(tac_var->data_type) << " type " <<std::endl;
 						DEBUG_PANIC("convert value unsupported data type ");
 						break;
 					}
@@ -988,6 +1034,7 @@ public:
 
 			default:
 			{
+				DEBUG_PANIC("should not happen");
 			}
 		}
 

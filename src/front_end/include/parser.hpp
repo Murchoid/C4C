@@ -150,6 +150,10 @@ public:
 		{
 			return TokenType::TOKEN_KEYWORD_PUB;
 		}
+		else if (keyword == "struct")
+		{
+			return TokenType::TOKEN_KEYWORD_STRUCT;
+		}
 		else if (keyword == "loop")
 		{
 			return TokenType::TOKEN_KEYWORD_LOOP;
@@ -627,6 +631,12 @@ public:
 				decl = new(mem) ASTDeclaration(ASTDeclarationType::ENUM,decl_val);
 				break;
 			}
+			case TokenType::TOKEN_KEYWORD_STRUCT:
+			{
+				ASTStructDecl *decl_val = parse_struct_decl();		
+				decl = new(mem) ASTDeclaration(ASTDeclarationType::STRUCT,decl_val);
+				break;
+			}
 			case TokenType::TOKEN_KEYWORD_NATIVE:
 			{
 				ASTNativeDecl *decl_val3 = parse_native_decl();		
@@ -651,6 +661,47 @@ public:
 				}
 			}
 		}
+
+		return decl;
+	}
+
+
+	ASTStructDecl *parse_struct_decl(bool is_public = false)
+	{
+		void *mem = alloc(sizeof(ASTStructDecl));
+		ASTStructDecl *decl = new(mem) ASTStructDecl();
+
+		decl->add_public(is_public);
+
+		expect_keyword("struct");
+		if (match_identifier())
+		{
+			decl->add_ident(consume().string);
+		}
+
+		expect_symbol(":");
+
+		while (not is_token(":"))
+		{
+			ASTType *type = parse_type();
+
+			std::string ident;
+
+			if (match_identifier())
+			{
+				ident = consume().string;
+			}
+			else
+			{
+				fatal("expected a property name in struct");
+			}
+
+			mem = alloc(sizeof(ASTStructProperty));
+			ASTStructProperty *property = new(mem) ASTStructProperty(type,ident);
+			decl->add_property(property);
+		}
+
+		expect_symbol(":");
 
 		return decl;
 	}

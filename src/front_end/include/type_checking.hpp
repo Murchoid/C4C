@@ -46,6 +46,7 @@ public:
     int int_init = 0;
     long int int64_init = 0;
     bool is_int = true;
+    DataType return_type;
 
 
     Symbol(std::string name,DataType type,bool local = true)
@@ -53,6 +54,11 @@ public:
         this->name = name;
         this->type = type;
         this->local = local;
+    }
+
+    void add_return_type(DataType return_type)
+    {
+        this->return_type = return_type;
     }
 
     void add_val(TypeFunction val)
@@ -131,6 +137,13 @@ public:
     DataType get_type(std::string name)
     {
         return this->table.at(name).type;
+        //return this->map[name].name;
+    }
+
+
+    DataType get_return_type(std::string name)
+    {
+        return this->table.at(name).return_type;
         //return this->map[name].name;
     }
 
@@ -366,13 +379,16 @@ public:
         else if (decl->return_type->type == ASTDataType::I64)
         {
             return_type = DataType::I64;
+            //DEBUG_PANIC("correct type : i64  =>  " + decl->ident );
         }
         else
         {
             fatal(" invalid return type in function " + decl->ident);
         }
 
+
         TypeFunction f_type(return_type,decl->arguments.size());
+
 
         if (symbol_table->lookup(decl->ident))
         {
@@ -382,6 +398,7 @@ public:
         Symbol symbol(decl->ident,DataType::FUNCTION);
         symbol.add_val(f_type);
         symbol.add_global(decl->is_public);
+        symbol.add_return_type(return_type);
 
         symbol_table->add(decl->ident,symbol);
 
@@ -391,7 +408,27 @@ public:
             {
                 continue;
             }
-            symbol_table->add(arg->ident,Symbol(arg->ident,DataType::I32));
+
+            DataType arg_datatype;
+            switch (arg->type->type)
+            {
+                case ASTDataType::I32:
+                {
+                    arg_datatype = DataType::I32;
+                    break;
+                }
+                case ASTDataType::I64:
+                {
+                    arg_datatype = DataType::I64;
+                    break;
+                }
+                default:
+                {
+                    fatal(" unsupported type in function argument ");
+                }
+            }
+
+            symbol_table->add(arg->ident,Symbol(arg->ident,arg_datatype));
 
         }
 
@@ -647,6 +684,7 @@ public:
 
         if(stmt->expr->data_type != return_type)
         {
+            std::cout << "  return type  "  << (int)return_type  << "  : stmt->expr->data_type  "  << (int)stmt->expr->data_type << std::endl;
             fatal("returned value data type conflicts with the function's data type");
         }
     }
@@ -683,6 +721,7 @@ public:
                     }
                     case ASTDataType::I64:
                     {
+                        DEBUG_PANIC("the fuckery");
                         cast_expr->add_data_type(DataType::I64);
                         break;
                     }
@@ -721,7 +760,18 @@ public:
                     {
                         if(assign_expr->rhs->data_type == DataType::I32)
                         {
-                            fatal(" i32 used with an i64 => perform cast for this to compile");
+                            if(assign_expr->rhs->type == ASTExpressionType::I32)
+                            {
+                                assign_expr->rhs->type = ASTExpressionType::I64;
+                                ASTI32Expr *i32_expr = (ASTI32Expr *)assign_expr->rhs->expr;
+                                i32_expr->add_data_type(DataType::I64);
+                                assign_expr->rhs->add_data_type(DataType::I64);
+                                assign_expr->add_data_type(DataType::I64);
+                            }
+                            else
+                            {
+                                fatal(" i32 used with an i64 => perform cast for this to compile");
+                            }
                         }
                         else
                         {
@@ -763,8 +813,10 @@ public:
                 std::string name = fn_expr->ident;
                 DataType t_type = symbol_table->get_type(name);
                 TypeFunction f_type = symbol_table->get_val(name);
-                fn_expr->add_data_type(t_type);
-                expr->add_data_type(t_type);
+                fn_expr->add_data_type(f_type.return_type);
+                expr->add_data_type(f_type.return_type);
+
+                std::cout << "t_type   :  " << (int)t_type << std::endl;
 
                 if (t_type == DataType::I32 or t_type == DataType::I64)
                 {
@@ -830,36 +882,62 @@ public:
                     }
                     default:
                     {
-                        switch (binary_expr->lhs->data_type)
+                        switch(binary_expr->op)
                         {
-                            case DataType::I32:
+                            case ASTBinaryOperator::ADD:
+                            case ASTBinaryOperator::SUB:
+                            case ASTBinaryOperator::MUL:
+                            case ASTBinaryOperator::DIV:
+                            case ASTBinaryOperator::MOD:
                             {
-                                if(binary_expr->rhs->data_type == DataType::I64)
+                                switch (binary_expr->lhs->data_type)
                                 {
-                                    fatal(" i64 used with an i32 => perform cast for this to compile");
-                                }
-                                else
-                                {
-                                    binary_expr->add_data_type(DataType::I32);
-                                }
-                                break;
-                            }
-                            case DataType::I64:
-                            {
-                                if(binary_expr->rhs->data_type == DataType::I32)
-                                {
-                                    fatal(" i32 used with an i64 => perform cast for this to compile");
-                                }
-                                else
-                                {
-                                    binary_expr->add_data_type(DataType::I64);
+                                    case DataType::I32:
+                                    {
+                                        if(binary_expr->rhs->data_type == DataType::I64)
+                                        {
+                                            fatal(" i64 used with an i32 => perform cast for this to compile");
+                                        }
+                                        else
+                                        {
+                                            binary_expr->add_data_type(DataType::I32);
+                                        }
+                                        break;
+                                    }
+                                    case DataType::I64:
+                                    {
+                                        if(binary_expr->rhs->data_type == DataType::I32)
+                                        {
+                                            if(binary_expr->rhs->type == ASTExpressionType::I32)
+                                            {
+                                                binary_expr->rhs->type = ASTExpressionType::I64;
+                                                ASTI32Expr *i32_expr = (ASTI32Expr *)binary_expr->rhs->expr;
+                                                i32_expr->add_data_type(DataType::I64);
+                                                binary_expr->rhs->add_data_type(DataType::I64);
+                                                binary_expr->add_data_type(DataType::I64);
+                                            }
+                                            else
+                                            {
+                                                fatal(" i32 used with an i64 => perform cast for this to compile");
+                                            }
+                                        }
+                                        else
+                                        {
+                                            binary_expr->add_data_type(DataType::I64);
+                                        }
+                                        break;
+                                    }
+                                    default:
+                                    {
+                                        fatal("unsupported datatype encountered");
+                                        break;
+                                    }
                                 }
                                 break;
                             }
                             default:
                             {
-                                fatal("unsupported datatype encountered");
-                                break;
+                                binary_expr->add_data_type(DataType::I32);
                             }
                         }
                         break;

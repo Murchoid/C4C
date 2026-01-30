@@ -211,35 +211,30 @@ public:
 		write_body("\tret\n");
 	}
 	
-	void gen_mov_inst(ASMMovInst *inst)
+
+	void fix_mov(ASMMovInst *inst)
 	{
 		switch(inst->dst->data_type)
 		{
-			case ASMType::I64:
+			case ASMType::I32:
 			{
-				switch(inst->dst->type)
+				switch (inst->src->type)
 				{
 					case ASMOperandType::REGISTER:
 					{
-						ASMRegister *asm_reg = (ASMRegister *)inst->dst->operand;
-						std::cout << "asm size :  " << asm_reg->size << std::endl;
-						asm_reg->size = 8;
+						ASMRegister *asm_reg = (ASMRegister *)inst->src->operand;
+						asm_reg->size = 4;
 						break;
 					}
 				}
 				break;
 			}
-			case ASMType::I32:
-			{
-				std::cout << "mov"<<std::endl;
-				break;
-			}
-			default:
-			{
-				DEBUG_PANIC(" --------------  ");
-			}
 		}
+	}
 
+	void gen_mov_inst(ASMMovInst *inst)
+	{
+		fix_mov(inst);
 		write_body("\tmov ");
 		gen_operand(inst->dst);
 		write_body(",");
@@ -681,9 +676,21 @@ public:
 				gen_i32_immediate((int *)asm_imm->value);
 				break;
 			}
+			case ASMImmediateType::I64:
+			{
+				gen_i64_immediate((long int *)asm_imm->value);
+				break;
+			}
 		}
 	}
+
+	
 	void gen_i32_immediate(int *value)
+	{
+		write_body(std::to_string(*value));
+	}
+	
+	void gen_i64_immediate(long int *value)
 	{
 		write_body(std::to_string(*value));
 	}

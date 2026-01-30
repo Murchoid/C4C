@@ -1,15 +1,28 @@
-@include "include_test/test1.rs" /* The include_test folder was created to test for absolute path finding*/
+//@include "include_test/test1.rs" /* The include_test folder was created to test for absolute path finding*/
+
+struct Task:
+    i32 pid
+    i32 uid
+:
+
+
+fn add_i64(i64 x,i64 y)->i64:
+    return x + y
+:
+
 
 pub fn main()->i32:
-    i32 character = 65
+    i64 character = 65
     while character <= 120:
-        putchar(character)
         character = character + 1
     :
-   
-    exit(200)
-    putchar(10)
 
-    exit(2)
-    return 10
+    i64 tmp = character + 17
+    tmp = tmp + 89
+
+    i32 ret = cast<i32>(character)
+  
+    i64 val64 = add_i64(200,106)
+
+    return cast<i32>(val64) - (cast<i32>(tmp) - ret)
 :

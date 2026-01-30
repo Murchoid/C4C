@@ -456,6 +456,10 @@ private:
 		{
 			add_token(TokenType::TOKEN_KEYWORD_RETURN,buf);
 		}
+		else if (match_keyword(buf,"struct"))
+		{
+			add_token(TokenType::TOKEN_KEYWORD_STRUCT,buf);
+		}
 		else if (match_keyword(buf,"while"))
 		{
 			add_token(TokenType::TOKEN_KEYWORD_WHILE,buf);

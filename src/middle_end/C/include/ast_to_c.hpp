@@ -198,13 +198,12 @@ public:
 
 	void convert_block_stmt(ASTBlockStmt *block,std::string tab="")
 	{
-		tab += "\t";
-		write_body("{\n");
+		write_body(tab + "{\n");
 		for (ASTStatement *stmt : block->stmts)
 		{
-			convert_stmt(stmt,tab);
+			convert_stmt(stmt,tab + "\t");
 		}
-		write_body("}\n");
+		write_body(tab + "}\n");
 	}
 
 
@@ -272,7 +271,7 @@ public:
 		write_body("while (");
 		convert_expr(stmt->expr);
 		write_body(")\n");
-		convert_block_stmt(stmt->block,tab + "\t");
+		convert_block_stmt(stmt->block,tab);
 	}
 
 
@@ -282,7 +281,7 @@ public:
 		write_body("if(");
 		convert_expr(stmt->expr);
 		write_body(")\n");
-		convert_block_stmt(stmt->block,tab + "\t");
+		convert_block_stmt(stmt->block,tab);
 
 		for (ASTIfElifBlock *elif_block : stmt->elif_blocks)
 		{
@@ -294,13 +293,13 @@ public:
 			write_body("else if(");
 			convert_expr(elif_block->expr);
 			write_body(")\n");
-			convert_block_stmt(elif_block->block,tab + "\t");
+			convert_block_stmt(elif_block->block,tab );
 		}
 
 		if(stmt->else_block != nullptr)
 		{
 			write_body("else\n");
-			convert_block_stmt(stmt->else_block->block,tab + "\t");
+			convert_block_stmt(stmt->else_block->block,tab);
 		}
 	}
 
@@ -368,6 +367,7 @@ public:
 
 	void convert_expr(ASTExpression *expr)
 	{
+		write_body("(");
 		switch (expr->type)
 		{
 			case ASTExpressionType::CAST:
@@ -431,6 +431,8 @@ public:
 				break;
 			}
 		}
+
+		write_body(")");
 
 	}
 

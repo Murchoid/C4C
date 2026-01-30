@@ -57,7 +57,7 @@ int main(int argc,char *argv[])
 		
 		
 		/*
-
+*/
 		TypeChecking type_check(file_name,resolve.program);
 		DEBUG_PRINT("sanity check : ", " after resolve ");
 		
@@ -77,6 +77,8 @@ int main(int argc,char *argv[])
 		Codegen gen(file_name,intel.program);
 		DEBUG_PRINT("sanity check : ", " after codegen");
 		StringToFile(file_name.substr(0, file_name.length() - 3) + ".asm",gen.string);
-		*/
+
+		//DEBUG_PANIC("testing");
+		
 	}
 }
