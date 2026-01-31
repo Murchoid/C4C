@@ -66,7 +66,7 @@ private:
     inline void make_identifier()
     {
         std::string buff;
-        while (is_alphanumeric() || match_token('_'))
+        while (is_alphanumeric() || match_token('_') || match_token('-'))
         {
             buff += consume();
         }
@@ -75,18 +75,43 @@ private:
         add_keyword(buff);
     }
 
-    inline void make_string()
+    inline void make_multiline_string()
     {
+        char quote;
+        if (this->src[this->pos] == '\'')
+        {
+            quote = '\'';
+        }
+        else
+        {
+            quote = '\"';
+        }
+        consume();
+        consume();
+        consume();
         bool error = false;
         std::string buff;
-        consume();
 
-        while (not match_token('\"'))
+        while (!(match_token(quote) && match_token(quote, 1) && match_token(quote, 2) && match_token('\n', 3)))
         {
             if (is_end())
             {
                 error = true;
                 break;
+            }
+
+            if (match_token('\\') and match_token('n', 1))
+            {
+                consume();
+                consume();
+                buff += ' ';
+            }
+            if (match_token('\\'))
+            {
+                while (not is_end() and not is_alphanumeric())
+                {
+                    consume();
+                }
             }
 
             buff += consume();
@@ -99,7 +124,72 @@ private:
         }
         else
         {
+            add_token(buff, TomlTokenType::TOK_STRING);
+        }
+
+        consume();
+        consume();
+        consume();
+        update_col(buff.length() + 2);
+    }
+
+    inline void make_string()
+    {
+        char quote;
+        if (this->src[this->pos] == '\'')
+        {
+            quote = '\'';
+        }
+        else
+        {
+            quote = '\"';
+        }
+        
+        consume();
+        bool error = false;
+        std::string buff;
+
+        while (not match_token(quote))
+        {
+            if (is_end())
+            {
+                error = true;
+                break;
+            }
+
+            if (match_token('\\') and match_token('n', 1))
+            {
+                consume();
+                consume();
+                buff += ' ';
+            }
+            if (match_token('\\'))
+            {
+                while (not is_end() and not is_alphanumeric())
+                {
+                    consume();
+                }
+            }
+            buff += consume();
+        }
+
+        consume();
+        while (match_token(' ') and not match_token('\n'))
+        {
             consume();
+        }
+
+        if (error == true)
+        {
+            add_token(buff, TomlTokenType::TOK_ERROR);
+            this->has_errors = true;
+        }
+        else if (peek() == '=')
+        {
+            add_token(buff, TomlTokenType::TOK_IDENTIFIER);
+        }
+        else
+        {
             add_token(buff, TomlTokenType::TOK_STRING);
         }
 
@@ -145,7 +235,8 @@ private:
         int curr_pos = this->pos;
         int idx = curr_pos + lookahead;
 
-        if (idx >= this->length) return false;
+        if (idx >= this->length)
+            return false;
         return (this->src[idx] >= '0' && this->src[idx] <= '9');
     }
 
@@ -153,7 +244,8 @@ private:
     {
         int curr_pos = this->pos;
         int idx = curr_pos + lookahead;
-        if (idx >= this->length) return false;
+        if (idx >= this->length)
+            return false;
 
         return (this->src[idx] >= 'a' && this->src[idx] <= 'z') || (this->src[idx] >= 'A' && this->src[idx] <= 'Z');
     }
@@ -236,7 +328,6 @@ public:
     {
         char token = peek();
 
-        printf("Cursor pos: %d, char is : %c\n", this->pos, this->src[this->pos]);
         switch (token)
         {
         case 'a':
@@ -307,7 +398,15 @@ public:
             make_number();
             break;
         case '\"':
-            make_string();
+        case '\'':
+            if ((peek() == '\"' && peek(1) == '\"') || ((peek() == '\'' && peek(1) == '\'')))
+            {
+                make_multiline_string();
+            }
+            else
+            {
+                make_string();
+            }
             break;
         case '[':
             if (match_token('[', 1))
