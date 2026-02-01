@@ -3,6 +3,7 @@
 
 #include <string>
 #include <vector>
+#include <stdint.h>
 #include "toml_token.hpp"
 
 enum DateState
@@ -159,7 +160,7 @@ private:
         {
             return true;
         }
-        /*12:23:*/
+        /* 12:23: */
         else if (is_integer() and is_integer(1) and peek(2) == ':' and is_integer(3) and is_integer(4) and peek(5) == ':')
         {
             return true;
@@ -190,6 +191,8 @@ private:
         std::string buff;
         bool seen_time = false;
         bool seen_offset = false;
+        bool seen_date = false;
+
         DateState state;
 
         if (is_integer() && is_integer(1) && is_integer(2) && is_integer(3) && peek(4) == '-')
@@ -217,6 +220,7 @@ private:
                     goto error;
                 buff += consume();
                 state = MONTH;
+                seen_date = true;
                 break;
 
             case MONTH:
@@ -284,10 +288,14 @@ private:
                     seen_offset = true;
                     state = OFFSET_HOUR;
                 }
-                else
+                else if(seen_date)
                 {
                     add_token(buff, TomlTokenType::TOK_LOCAL_DATETIME);
                     return;
+                }
+                else if(!seen_date)
+                {
+                    add_token(buff, TomlTokenType::TOK_LOCAL_TIME);
                 }
                 break;
 
@@ -338,6 +346,106 @@ private:
         add_token(buff, TomlTokenType::TOK_ERROR);
         return;
 
+    }
+
+    inline void handle_escape(std::string &buff)
+    {
+        consume();
+        char c = consume();
+        switch (c)
+        {
+        case 'n':
+            buff += '\n';
+            break;
+        case 't':
+            buff += '\t';
+            break;
+        case 'r':
+            buff += '\r';
+            break;
+        case 'b':
+            buff += '\b';
+            break;
+        case 'f':
+            buff += '\f';
+            break;
+        case '"':
+            buff += '"';
+            break;
+        case '\\':
+            buff += '\\';
+            break;
+
+        case 'u':
+            parse_unicode(buff, 4);
+            break;
+
+        case 'U':
+            parse_unicode(buff, 8);
+            break;
+
+        default:
+            panic("Unknown escape character");
+            break;
+        }
+    }
+
+    void parse_unicode(std::string &buff, int digits)
+    {
+        uint32_t codepoint = 0;
+
+        for (int i = 0; i < digits; i++)
+        {
+            char h = consume();
+            if (!is_hex(h))
+            {
+                panic("Not a hex value");
+            }
+            codepoint = (codepoint << 4) | hex_value(h);
+        }
+
+        append_utf8(buff, codepoint);
+    }
+
+    inline uint8_t hex_value(char c)
+    {
+        if (c >= '0' && c <= '9')
+            return c - '0';
+        if (c >= 'a' && c <= 'f')
+            return c - 'a' + 10;
+        if (c >= 'A' && c <= 'F')
+            return c - 'A' + 10;
+        return 0; 
+    }
+
+    void append_utf8(std::string &buff, uint32_t cp)
+    {
+        if (cp <= 0x7F)
+        {
+            buff.push_back((char)cp);
+        }
+        else if (cp <= 0x7FF)
+        {
+            buff.push_back((char)(0xC0 | (cp >> 6)));
+            buff.push_back((char)(0x80 | (cp & 0x3F)));
+        }
+        else if (cp <= 0xFFFF)
+        {
+            buff.push_back((char)(0xE0 | (cp >> 12)));
+            buff.push_back((char)(0x80 | ((cp >> 6) & 0x3F)));
+            buff.push_back((char)(0x80 | (cp & 0x3F)));
+        }
+        else if (cp <= 0x10FFFF)
+        {
+            buff.push_back((char)(0xF0 | (cp >> 18)));
+            buff.push_back((char)(0x80 | ((cp >> 12) & 0x3F)));
+            buff.push_back((char)(0x80 | ((cp >> 6) & 0x3F)));
+            buff.push_back((char)(0x80 | (cp & 0x3F)));
+        }
+        else
+        {
+            panic("invalid Unicode code point");
+        }
     }
 
     inline void add_keyword(std::string buff)
@@ -462,12 +570,12 @@ private:
             }
             if (match_token('\\'))
             {
-                while (not is_end() and not is_alphanumeric())
-                {
-                    consume();
-                }
+                handle_escape(buff);
             }
-            buff += consume();
+            else
+            {
+                buff += consume();
+            }
         }
 
         consume();
@@ -540,6 +648,12 @@ private:
         return (this->src[idx] >= 'a' && this->src[idx] <= 'f') or (this->src[idx] >= 'A' && this->src[idx] <= 'F');
     }
 
+        inline bool is_char_hex(char tok)
+    {
+
+        return (tok >= 'a' && tok <= 'f') or (tok >= 'A' && tok <= 'F');
+    }
+
     inline bool is_integer(size_t lookahead = 0)
     {
         int curr_pos = this->pos;
@@ -607,6 +721,12 @@ private:
         update_col(skipped);
     }
 
+
+    inline void panic(std::string msg)
+    {
+        printf("An error occured %s", msg.c_str());
+        exit(1);
+    }
 public:
     inline std::vector<TomlTokens> scan_tokens()
     {

@@ -20,6 +20,7 @@ std::string TOML_TOKEN_NAME[] = {
 
     "TOK_DATETIME", // 1979-05-27T07:32:00Z 
     "TOK_LOCAL_DATE", // 1979-05-27
+    "TOK_LOCAL_TIME", 
     "TOK_LOCAL_DATETIME", 
     "TOK_OFFSET_DATETIME", 
 
@@ -58,6 +59,7 @@ enum class TomlTokenType
     TOK_FLOAT,    // 3.14, 1e10
     TOK_BOOLEAN,  // true, false
     TOK_DATETIME, // 1979-05-27T07:32:00Z (optional early)
+    TOK_LOCAL_TIME, 
     TOK_LOCAL_DATE, // 1979-05-27
     TOK_LOCAL_DATETIME, 
     TOK_OFFSET_DATETIME, 
