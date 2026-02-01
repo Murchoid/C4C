@@ -1,52 +1,113 @@
-# This is a TOML document
+############################################
+# Basic key-value pairs
+############################################
 
-"title" = "TOML Example"
-'author' = "Test User"
-site."google.com" = true
-
-[database]
-server = "192.168.1.1"
-ports = [ 8001, 8001, 8002 ]
-connection_max = 5000
+title = "TOML Lexer Test"
 enabled = true
-str1 = """
-Roses are red
-Violets are blue"""
-str2 = "Roses are red\nViolets are blue"
-str3 = """
-The quick brown \
+count = 42
+pi = 3.14159
+neg = -17
+exp1 = 1e3
+exp2 = -2.5E-4
 
+############################################
+# Strings
+############################################
 
-  fox jumps over \
-    the lazy dog."""
+basic = "Hello, world"
+escaped = "Line1\nLine2\tTabbed \"Quoted\""
+unicode = "Unicode ✓ α β γ"
 
-str7 = """"This," she said, "is just a pointless statement.""""
-regex2 = '''I [dw]on't need \d{2} apples'''
-lines  = '''
-The first newline is
-trimmed in literal strings.
-   All other whitespace
-   is preserved.
-'''
+multiline_basic = """
+This is a multi-line string.
+It can contain "quotes".
+Even empty lines.
 
+End.
+"""
 
-str = ''''That,' she said, 'is still pointless.''''
+############################################
+# Arrays
+############################################
+
+numbers = [1, 2, 3, 4]
+mixed = [1, "two", 3.0, true]
+nested = [[1, 2], [3, 4]]
+
+############################################
+# Dates and Times (THIS IS THE IMPORTANT PART)
+############################################
+
+# Local date
+ld1 = 1979-05-27
+ld2 = 2024-02-29   # leap year
+
+# Local time
+lt1 = 07:32:00
+lt2 = 23:59:59
+lt3 = 00:00:00.5
+lt4 = 00:00:00.999999
+
+# Local datetime
+ldt1 = 1979-05-27T07:32:00
+ldt2 = 1979-05-27T00:32:00.5
+ldt3 = 1979-05-27T00:32:00.999999
+
+# Offset datetime (UTC)
+odt1 = 1979-05-27T07:32:00Z
+
+# Offset datetime (positive offset)
+odt2 = 1979-05-27T00:32:00+07:00
+odt3 = 1979-05-27T00:32:00.5+07:00
+
+# Offset datetime (negative offset)
+odt4 = 1979-05-27T00:32:00-07:00
+odt5 = 1979-05-27T00:32:00.999999-07:00
+
+############################################
+# Tables
+############################################
 
 [owner]
 name = "Tom Preston-Werner"
 dob = 1979-05-27T07:32:00Z
 
-[database.connection]
-host = "localhost"
-port = 5432
-debug = false
+############################################
+# Dotted keys
+############################################
+
+database.server = "192.168.1.1"
+database.port = 8001
+database.enabled = true
+database.started_at = 2023-10-01T12:00:00+03:00
+
+############################################
+# Array of tables
+############################################
 
 [[products]]
 name = "Hammer"
-sku = 738594937
-color = "gray"
+price = 10.99
+created = 2024-01-01
 
 [[products]]
 name = "Nail"
-sku = 284758393
-color = "gray"
+price = 0.10
+created = 2024-01-01T08:00:00
+
+############################################
+# Edge cases (valid TOML)
+############################################
+
+# Whitespace around tokens
+ spaced   =    1979-05-27T07:32:00Z
+
+# Arrays of datetimes
+schedule = [
+  2024-01-01T00:00:00Z,
+  2024-06-01T12:30:00+02:00,
+  2024-12-31T23:59:59.999999-05:00
+]
+
+# Inline table
+inline = { start = 2024-01-01T00:00:00Z, end = 2024-01-02T00:00:00Z }

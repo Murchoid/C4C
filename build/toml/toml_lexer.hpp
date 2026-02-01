@@ -5,6 +5,37 @@
 #include <vector>
 #include "toml_token.hpp"
 
+enum DateState
+{
+    YEAR,
+    YEAR_DASH,
+    MONTH,
+    MONTH_DASH,
+    DAY,
+
+    DATE_DONE,
+
+    TIME_HOUR,
+    TIME_COLON1,
+    TIME_MIN,
+    TIME_COLON2,
+    TIME_SEC,
+
+    FRACTION_DOT,
+    FRACTION,
+
+    TIME_DONE,
+
+    OFFSET_Z,
+    OFFSET_SIGN,
+    OFFSET_HOUR,
+    OFFSET_COLON,
+    OFFSET_MIN,
+
+    ACCEPT,
+    ERROR
+};
+
 class TomlLexer
 {
     int col;
@@ -23,24 +54,37 @@ private:
     void make_decimal()
     {
         std::string buff;
+        TomlTokenType tok_type = TomlTokenType::TOK_INTEGER;
 
-        while (is_integer())
+        while (is_integer() or match_token('+') or match_token('-') or match_token('e') or match_token('E') or (match_token('_') && is_integer(1)))
         {
+            if(match_token('e') or match_token('E'))
+            {
+                tok_type = TomlTokenType::TOK_FLOAT;
+            }
+            if (match_token('_'))
+            {
+                consume();
+            }
             buff += consume();
         }
 
         if (match_token('.') && is_integer(1))
         {
+
             buff += consume();
 
-            while (is_integer())
+            while (is_integer() or match_token('e') or match_token('E') or match_token('+') or match_token('-'))
+            {
                 buff += consume();
+            }
 
             add_token(buff, TomlTokenType::TOK_FLOAT);
         }
         else
         {
-            add_token(buff, TomlTokenType::TOK_INTEGER);
+
+            add_token(buff, tok_type);
         }
 
         update_col(buff.length());
@@ -51,11 +95,264 @@ private:
         make_decimal();
     }
 
+    inline void make_binary_number()
+    {
+        std::string buff;
+
+        buff += consume(); // consume the 0
+        buff += consume(); // consume the b
+
+        while (match_token('1') or match_token('0') or match_token('_'))
+        {
+            if (match_token('_'))
+            {
+                consume();
+            }
+            buff += consume();
+        }
+
+        add_token(buff, TomlTokenType::TOK_INTEGER);
+    }
+
+    inline void make_hex_number()
+    {
+        std::string buff;
+        buff += consume(); // consume the 0
+        buff += consume(); // consume the x
+
+        while (is_hex() or is_integer() or match_token('_'))
+        {
+            if (match_token('_'))
+            {
+                consume();
+            }
+            buff += consume();
+        }
+
+        add_token(buff, TomlTokenType::TOK_INTEGER);
+    }
+
+    inline void make_octal_number()
+    {
+        std::string buff;
+        buff += consume(); // consume 0
+        buff += consume(); // consume o
+
+        while (is_integer() or match_token('_'))
+        {
+            if (match_token('_'))
+            {
+                consume();
+            }
+
+            buff += consume();
+        }
+
+        add_token(buff, TomlTokenType::TOK_INTEGER);
+    }
+
+    inline bool looks_like_date()
+    {
+
+        /* 1979-12-*/
+        if (is_integer() and is_integer(1) and is_integer(2) and is_integer(3) and peek(4) == '-' and is_integer(5) and is_integer(6) and peek(7) == '-')
+        {
+            return true;
+        }
+        /*12:23:*/
+        else if (is_integer() and is_integer(1) and peek(2) == ':' and is_integer(3) and is_integer(4) and peek(5) == ':')
+        {
+            return true;
+        }
+
+        return false;
+    }
+
+    inline bool expect(char token)
+    {
+        return this->src[this->pos + 1] == token;
+    }
+
+    bool consume_digits(std::string &buff, int n)
+    {
+        for (int i = 0; i < n; i++)
+        {
+            if (!is_integer())
+                return false;
+            buff += consume();
+        }
+        return true;
+    }
+
+    inline void make_date()
+    {
+
+        std::string buff;
+        bool seen_time = false;
+        bool seen_offset = false;
+        DateState state;
+
+        if (is_integer() && is_integer(1) && is_integer(2) && is_integer(3) && peek(4) == '-')
+        {
+            state = YEAR;
+        }
+        else if (is_integer() && is_integer(1) && peek(2) == ':')
+        {
+            state = TIME_HOUR;
+        }
+        else
+        {
+            return; 
+        }
+
+        while (true)
+        {
+            switch (state)
+            {
+
+            case YEAR:
+                if (!consume_digits(buff, 4))
+                    goto error;
+                if (peek() != '-')
+                    goto error;
+                buff += consume();
+                state = MONTH;
+                break;
+
+            case MONTH:
+                if (!consume_digits(buff, 2))
+                    goto error;
+                if (peek() != '-')
+                    goto error;
+                buff += consume();
+                state = DAY;
+                break;
+
+            case DAY:
+                if (!consume_digits(buff, 2))
+                    goto error;
+
+                if (peek() == 'T')
+                {
+                    buff += consume();
+                    seen_time = true;
+                    state = TIME_HOUR;
+                }
+                else
+                {
+                    add_token(buff, TomlTokenType::TOK_LOCAL_DATE);
+                    return;
+                }
+                break;
+
+            case TIME_HOUR:
+                if (!consume_digits(buff, 2))
+                    goto error;
+                if (peek() != ':')
+                    goto error;
+                buff += consume();
+                state = TIME_MIN;
+                break;
+
+            case TIME_MIN:
+                if (!consume_digits(buff, 2))
+                    goto error;
+                if (peek() != ':')
+                    goto error;
+                buff += consume();
+                state = TIME_SEC;
+                break;
+
+            case TIME_SEC:
+                if (!consume_digits(buff, 2))
+                    goto error;
+
+                if (peek() == '.')
+                {
+                    buff += consume();
+                    state = FRACTION;
+                }
+                else if (peek() == 'Z')
+                {
+                    buff += consume();
+                    add_token(buff, TomlTokenType::TOK_OFFSET_DATETIME);
+                    return;
+                }
+                else if (peek() == '+' || peek() == '-')
+                {
+                    buff += consume();
+                    seen_offset = true;
+                    state = OFFSET_HOUR;
+                }
+                else
+                {
+                    add_token(buff, TomlTokenType::TOK_LOCAL_DATETIME);
+                    return;
+                }
+                break;
+
+            case FRACTION:
+                if (!is_integer())
+                    goto error;
+                while (is_integer())
+                {
+                    buff += consume();
+                }
+
+                if (peek() == 'Z')
+                {
+                    buff += consume();
+                    add_token(buff, TomlTokenType::TOK_OFFSET_DATETIME);
+                    return;
+                }
+                else if (peek() == '+' || peek() == '-')
+                {
+                    buff += consume();
+                    state = OFFSET_HOUR;
+                }
+                else
+                {
+                    add_token(buff, TomlTokenType::TOK_LOCAL_DATETIME);
+                    return;
+                }
+                break;
+
+            case OFFSET_HOUR:
+                if (!consume_digits(buff, 2))
+                    goto error;
+                if (peek() != ':')
+                    goto error;
+                buff += consume();
+                state = OFFSET_MIN;
+                break;
+
+            case OFFSET_MIN:
+                if (!consume_digits(buff, 2))
+                    goto error;
+                add_token(buff, TomlTokenType::TOK_OFFSET_DATETIME);
+                return;
+            }
+        }
+    error:
+        has_errors = true;
+        add_token(buff, TomlTokenType::TOK_ERROR);
+        return;
+
+    }
+
     inline void add_keyword(std::string buff)
     {
         if (buff == "true" or buff == "false")
         {
             add_token(buff, TomlTokenType::TOK_BOOLEAN);
+        }
+        else if (buff == "nan" or buff == "+nan" or buff == "-nan")
+        {
+            add_token(buff, TomlTokenType::TOK_NAN);
+        }
+        else if (buff == "inf" or buff == "+inf" or buff == "-inf")
+        {
+            add_token(buff, TomlTokenType::TOK_INF);
         }
         else
         {
@@ -66,7 +363,7 @@ private:
     inline void make_identifier()
     {
         std::string buff;
-        while (is_alphanumeric() || match_token('_') || match_token('-'))
+        while (is_alphanumeric() or match_token('_') or match_token('-') or match_token('+'))
         {
             buff += consume();
         }
@@ -144,7 +441,7 @@ private:
         {
             quote = '\"';
         }
-        
+
         consume();
         bool error = false;
         std::string buff;
@@ -230,6 +527,19 @@ private:
         return this->src[this->pos + lookahead];
     }
 
+    inline bool is_hex(size_t lookahead = 0)
+    {
+        int curr_pos = this->pos;
+        int idx = curr_pos + lookahead;
+
+        if (idx >= length)
+        {
+            return false;
+        }
+
+        return (this->src[idx] >= 'a' && this->src[idx] <= 'f') or (this->src[idx] >= 'A' && this->src[idx] <= 'F');
+    }
+
     inline bool is_integer(size_t lookahead = 0)
     {
         int curr_pos = this->pos;
@@ -247,12 +557,12 @@ private:
         if (idx >= this->length)
             return false;
 
-        return (this->src[idx] >= 'a' && this->src[idx] <= 'z') || (this->src[idx] >= 'A' && this->src[idx] <= 'Z');
+        return (this->src[idx] >= 'a' && this->src[idx] <= 'z') or (this->src[idx] >= 'A' && this->src[idx] <= 'Z');
     }
 
     inline bool is_alphanumeric(size_t lookahead = 0)
     {
-        return is_integer(lookahead) || is_aslphabet(lookahead);
+        return is_integer(lookahead) or is_aslphabet(lookahead);
     }
 
     inline bool match_token(char tok, size_t lookahead = 0)
@@ -382,10 +692,26 @@ public:
         case 'X':
         case 'Y':
         case 'Z':
-        case '_':
             make_identifier();
             break;
         case '0':
+            if (peek(1) == 'x')
+            {
+                make_hex_number();
+            }
+            else if (peek(1) == 'o')
+            {
+                make_octal_number();
+            }
+            else if (peek(1) == 'b')
+            {
+                make_binary_number();
+            }
+            else
+            {
+                make_number();
+            }
+            break;
         case '1':
         case '2':
         case '3':
@@ -395,11 +721,29 @@ public:
         case '7':
         case '8':
         case '9':
-            make_number();
+            if (looks_like_date())
+            {
+                make_date();
+            }
+            else
+            {
+                make_number();
+            }
+            break;
+        case '+':
+        case '-':
+            if (is_integer(1))
+            {
+                make_number();
+            }
+            else if (is_aslphabet(1))
+            {
+                make_identifier();
+            }
             break;
         case '\"':
         case '\'':
-            if ((peek() == '\"' && peek(1) == '\"') || ((peek() == '\'' && peek(1) == '\'')))
+            if ((peek() == '\"' && peek(1) == '\"') or ((peek() == '\'' && peek(1) == '\'')))
             {
                 make_multiline_string();
             }
@@ -415,7 +759,7 @@ public:
             }
             else
             {
-                add_token_single(TomlTokenType::TOK_LBRACKET);
+                add_token_single(TomlTokenType::TOK_LBRACKET, "[");
             }
             break;
         case ']':
@@ -425,11 +769,17 @@ public:
             }
             else
             {
-                add_token_single(TomlTokenType::TOK_RBRACKET);
+                add_token_single(TomlTokenType::TOK_RBRACKET, "]");
             }
             break;
+        case '{':
+            add_token_single(TomlTokenType::TOK_LBRACE, "{");
+            break;
+        case '}':
+            add_token_single(TomlTokenType::TOK_RBRACE, "}");
+            break;
         case ',':
-            add_token_single(TomlTokenType::TOK_COMMA);
+            add_token_single(TomlTokenType::TOK_COMMA, ",");
             break;
         case '\t':
             update_col(4);

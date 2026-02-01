@@ -6,7 +6,9 @@ std::string TOML_TOKEN_NAME[] = {
     /* Special */
     "TOK_EOF",
     "TOK_ERROR",
-
+    "TOK_NAN",
+    "TOK_INF", 
+    
     /* Identifiers */
     "TOK_IDENTIFIER", // bare keys: foo, bar_baz, hello123
     "TOK_STRING",     // "value" or 'value'
@@ -15,9 +17,10 @@ std::string TOML_TOKEN_NAME[] = {
     "TOK_INTEGER",  // 42, -7
     "TOK_FLOAT",    // 3.14, 1e10
     "TOK_BOOLEAN",  // true, false
-    "TOK_DATETIME", // 1979-05-27T07:32:00Z (optional early)
-    "TOK_LOCAL_DATE", 
-    "TOK_LOCAL_TIME", 
+
+    "TOK_DATETIME", // 1979-05-27T07:32:00Z 
+    "TOK_LOCAL_DATE", // 1979-05-27
+    "TOK_LOCAL_DATETIME", 
     "TOK_OFFSET_DATETIME", 
 
     /* Symbols */
@@ -30,6 +33,8 @@ std::string TOML_TOKEN_NAME[] = {
     "TOK_RBRACKET",  // ]
     "TOK_LDBRACKET", // [[
     "TOK_RDBRACKET", // ]]
+    "TOK_LBRACE",    // {
+    "TOK_RBRACE",    // }
 
     /* Newlines */
     "TOK_NEWLINE"
@@ -41,6 +46,8 @@ enum class TomlTokenType
     /* Special */
     TOK_EOF,
     TOK_ERROR,
+    TOK_NAN,
+    TOK_INF,
 
     /* Identifiers */
     TOK_IDENTIFIER, // bare keys: foo, bar_baz, hello123
@@ -51,8 +58,8 @@ enum class TomlTokenType
     TOK_FLOAT,    // 3.14, 1e10
     TOK_BOOLEAN,  // true, false
     TOK_DATETIME, // 1979-05-27T07:32:00Z (optional early)
-    TOK_LOCAL_DATE, 
-    TOK_LOCAL_TIME, 
+    TOK_LOCAL_DATE, // 1979-05-27
+    TOK_LOCAL_DATETIME, 
     TOK_OFFSET_DATETIME, 
 
     /* Symbols */
@@ -65,6 +72,8 @@ enum class TomlTokenType
     TOK_RBRACKET,  // ]
     TOK_LDBRACKET, // [[
     TOK_RDBRACKET, // ]]
+    TOK_LBRACE,    // {
+    TOK_RBRACE,    // }
 
     /* Newlines */
     TOK_NEWLINE
