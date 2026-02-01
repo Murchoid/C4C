@@ -57,7 +57,7 @@ private:
         std::string buff;
         TomlTokenType tok_type = TomlTokenType::TOK_INTEGER;
 
-        while (is_integer() or match_token('+') or match_token('-') or match_token('e') or match_token('E') or (match_token('_') && is_integer(1)))
+        while (is_integer() or match_token('+') or match_token('-') or match_token('e') or match_token('E') or (match_token('_') and is_integer(1)))
         {
             if(match_token('e') or match_token('E'))
             {
@@ -70,7 +70,7 @@ private:
             buff += consume();
         }
 
-        if (match_token('.') && is_integer(1))
+        if (match_token('.') and is_integer(1))
         {
 
             buff += consume();
@@ -152,26 +152,20 @@ private:
         add_token(buff, TomlTokenType::TOK_INTEGER);
     }
 
-    inline bool looks_like_date()
+    bool looks_like_time()
     {
-
-        /* 1979-12-*/
-        if (is_integer() and is_integer(1) and is_integer(2) and is_integer(3) and peek(4) == '-' and is_integer(5) and is_integer(6) and peek(7) == '-')
-        {
-            return true;
-        }
-        /* 12:23: */
-        else if (is_integer() and is_integer(1) and peek(2) == ':' and is_integer(3) and is_integer(4) and peek(5) == ':')
-        {
-            return true;
-        }
-
-        return false;
+        return is_integer() && is_integer(1) && peek(2) == ':';
     }
 
-    inline bool expect(char token)
+    bool looks_like_date()
     {
-        return this->src[this->pos + 1] == token;
+        return is_integer() && is_integer(1) && is_integer(2) && is_integer(3) && peek(4) == '-';
+    }
+
+    inline bool looks_like_date_time()
+    {
+
+        return looks_like_date() || looks_like_time();
     }
 
     bool consume_digits(std::string &buff, int n)
@@ -192,16 +186,18 @@ private:
         bool seen_time = false;
         bool seen_offset = false;
         bool seen_date = false;
+        bool is_timeonly = false;
 
         DateState state;
 
-        if (is_integer() && is_integer(1) && is_integer(2) && is_integer(3) && peek(4) == '-')
+        if (is_integer() and is_integer(1) and is_integer(2) and is_integer(3) and peek(4) == '-')
         {
             state = YEAR;
         }
-        else if (is_integer() && is_integer(1) && peek(2) == ':')
+        else if (is_integer() and is_integer(1) and peek(2) == ':')
         {
             state = TIME_HOUR;
+            is_timeonly = true;
         }
         else
         {
@@ -220,7 +216,6 @@ private:
                     goto error;
                 buff += consume();
                 state = MONTH;
-                seen_date = true;
                 break;
 
             case MONTH:
@@ -235,6 +230,7 @@ private:
             case DAY:
                 if (!consume_digits(buff, 2))
                     goto error;
+                seen_date = true;
 
                 if (peek() == 'T')
                 {
@@ -242,10 +238,14 @@ private:
                     seen_time = true;
                     state = TIME_HOUR;
                 }
-                else
+                else if(!is_timeonly)
                 {
                     add_token(buff, TomlTokenType::TOK_LOCAL_DATE);
                     return;
+                }
+                else
+                {
+                    goto error;
                 }
                 break;
 
@@ -296,6 +296,7 @@ private:
                 else if(!seen_date)
                 {
                     add_token(buff, TomlTokenType::TOK_LOCAL_TIME);
+                    return;
                 }
                 break;
 
@@ -320,7 +321,7 @@ private:
                 }
                 else
                 {
-                    add_token(buff, TomlTokenType::TOK_LOCAL_DATETIME);
+                    add_token(buff, TomlTokenType::TOK_LOCAL_TIME);
                     return;
                 }
                 break;
@@ -409,11 +410,11 @@ private:
 
     inline uint8_t hex_value(char c)
     {
-        if (c >= '0' && c <= '9')
+        if (c >= '0' and c <= '9')
             return c - '0';
-        if (c >= 'a' && c <= 'f')
+        if (c >= 'a' and c <= 'f')
             return c - 'a' + 10;
-        if (c >= 'A' && c <= 'F')
+        if (c >= 'A' and c <= 'F')
             return c - 'A' + 10;
         return 0; 
     }
@@ -497,7 +498,7 @@ private:
         bool error = false;
         std::string buff;
 
-        while (!(match_token(quote) && match_token(quote, 1) && match_token(quote, 2) && match_token('\n', 3)))
+        while (!(match_token(quote) and match_token(quote, 1) and match_token(quote, 2) and match_token('\n', 3)))
         {
             if (is_end())
             {
@@ -645,13 +646,13 @@ private:
             return false;
         }
 
-        return (this->src[idx] >= 'a' && this->src[idx] <= 'f') or (this->src[idx] >= 'A' && this->src[idx] <= 'F');
+        return (this->src[idx] >= 'a' and this->src[idx] <= 'f') or (this->src[idx] >= 'A' and this->src[idx] <= 'F');
     }
 
         inline bool is_char_hex(char tok)
     {
 
-        return (tok >= 'a' && tok <= 'f') or (tok >= 'A' && tok <= 'F');
+        return (tok >= 'a' and tok <= 'f') or (tok >= 'A' and tok <= 'F');
     }
 
     inline bool is_integer(size_t lookahead = 0)
@@ -661,7 +662,7 @@ private:
 
         if (idx >= this->length)
             return false;
-        return (this->src[idx] >= '0' && this->src[idx] <= '9');
+        return (this->src[idx] >= '0' and this->src[idx] <= '9');
     }
 
     inline bool is_aslphabet(size_t lookahead = 0)
@@ -671,7 +672,7 @@ private:
         if (idx >= this->length)
             return false;
 
-        return (this->src[idx] >= 'a' && this->src[idx] <= 'z') or (this->src[idx] >= 'A' && this->src[idx] <= 'Z');
+        return (this->src[idx] >= 'a' and this->src[idx] <= 'z') or (this->src[idx] >= 'A' and this->src[idx] <= 'Z');
     }
 
     inline bool is_alphanumeric(size_t lookahead = 0)
@@ -712,7 +713,7 @@ private:
     {
         size_t skipped = 0;
 
-        while (not is_end() && peek() != '\n')
+        while (not is_end() and peek() != '\n')
         {
             consume();
             skipped++;
@@ -827,6 +828,10 @@ public:
             {
                 make_binary_number();
             }
+            else if (looks_like_date_time())
+            {
+                make_date();
+            }
             else
             {
                 make_number();
@@ -841,7 +846,7 @@ public:
         case '7':
         case '8':
         case '9':
-            if (looks_like_date())
+            if (looks_like_date_time())
             {
                 make_date();
             }
@@ -863,7 +868,7 @@ public:
             break;
         case '\"':
         case '\'':
-            if ((peek() == '\"' && peek(1) == '\"') or ((peek() == '\'' && peek(1) == '\'')))
+            if ((peek() == '\"' and peek(1) == '\"') or ((peek() == '\'' and peek(1) == '\'')))
             {
                 make_multiline_string();
             }
