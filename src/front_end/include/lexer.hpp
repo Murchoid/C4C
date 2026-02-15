@@ -374,6 +374,18 @@ private:
 		{
 			add_token(TokenType::TOKEN_KEYWORD_BREAK,buf);
 		}
+		else if (match_keyword(buf,"and"))
+		{
+			add_token(TokenType::TOKEN_AND,buf);
+		}
+		else if (match_keyword(buf,"bool"))
+		{
+			add_token(TokenType::TOKEN_KEYWORD_BOOL,buf);
+		}
+		else if (match_keyword(buf,"case"))
+		{
+			add_token(TokenType::TOKEN_KEYWORD_CASE,buf);
+		}
 		else if (match_keyword(buf,"cast"))
 		{
 			add_token(TokenType::TOKEN_KEYWORD_CAST,buf);
@@ -389,6 +401,14 @@ private:
 		else if (match_keyword(buf,"continue"))
 		{
 			add_token(TokenType::TOKEN_KEYWORD_CONTINUE,buf);
+		}
+		else if (match_keyword(buf,"default"))
+		{
+			add_token(TokenType::TOKEN_KEYWORD_DEFAULT,buf);
+		}
+		else if (match_keyword(buf,"defer"))
+		{
+			add_token(TokenType::TOKEN_KEYWORD_DEFER,buf);
 		}
 		else if (match_keyword(buf,"else"))
 		{
@@ -448,9 +468,21 @@ private:
 		{
 			add_token(TokenType::TOKEN_KEYWORD_LOOP,buf);
 		}
+		else if (match_keyword(buf,"match"))
+		{
+			add_token(TokenType::TOKEN_KEYWORD_MATCH,buf);
+		}
 		else if (match_keyword(buf,"native"))
 		{
 			add_token(TokenType::TOKEN_KEYWORD_NATIVE,buf);
+		}
+		else if (match_keyword(buf,"new"))
+		{
+			add_token(TokenType::TOKEN_KEYWORD_NEW,buf);
+		}
+		else if (match_keyword(buf,"or"))
+		{
+			add_token(TokenType::TOKEN_OR,buf);
 		}
 		else if (match_keyword(buf,"pub"))
 		{
@@ -460,6 +492,10 @@ private:
 		{
 			add_token(TokenType::TOKEN_KEYWORD_RETURN,buf);
 		}
+		else if (match_keyword(buf,"scoped_defer"))
+		{
+			add_token(TokenType::TOKEN_KEYWORD_SCOPED_DEFER,buf);
+		}
 		else if (match_keyword(buf,"self"))
 		{
 			add_token(TokenType::TOKEN_KEYWORD_SELF,buf);
@@ -467,6 +503,10 @@ private:
 		else if (match_keyword(buf,"struct"))
 		{
 			add_token(TokenType::TOKEN_KEYWORD_STRUCT,buf);
+		}
+		else if (match_keyword(buf,"switch"))
+		{
+			add_token(TokenType::TOKEN_KEYWORD_SWITCH,buf);
 		}
 		else if (match_keyword(buf,"while"))
 		{
@@ -487,6 +527,14 @@ private:
 		else if (match_keyword(buf,"u64"))
 		{
 			add_token(TokenType::TOKEN_KEYWORD_U64,buf);
+		}
+		else if (match_keyword(buf,"union"))
+		{
+			add_token(TokenType::TOKEN_KEYWORD_UNION,buf);
+		}
+		else if (match_keyword(buf,"variant"))
+		{
+			add_token(TokenType::TOKEN_KEYWORD_VARIANT,buf);
 		}
 		else if (match_keyword(buf,"void"))
 		{

@@ -71,6 +71,36 @@ public:
 
 
 
+
+class StructMap
+{
+public:
+    std::map<std::string,std::string> map;
+    bool lookup(std::string name) 
+    {
+        if (this->map.find(name) == this->map.end())
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    void add(std::string name,std::string entry)
+    {
+        //this->map[name] = entry;
+        this->map.emplace(name, entry);
+    }
+
+    std::string get(std::string name)
+    {
+        return this->map.at(name);
+        //return this->map[name].name;
+    }
+
+};
+
+
 class IdentifierResolution
 {
 public:
@@ -176,6 +206,73 @@ public:
             
             ident_map->add(decl->ident,MapEntry(constant_ident,true,true));
             enum_constant->ident = constant_ident;
+        }
+
+    }
+
+
+    void resolve_type(ASTType *type,StructMap *ident_map)
+    {
+        switch(type->type_type)
+        {
+            case ASTDataType::I8:
+            case ASTDataType::I16:
+            case ASTDataType::I32:
+            case ASTDataType::I64:
+            case ASTDataType::U8:
+            case ASTDataType::U16:
+            case ASTDataType::U32:
+            case ASTDataType::U64:
+            case ASTDataType::CHAR:
+            case ASTDataType::VOID:
+            {
+                break;
+            }
+            case ASTDataType::POINTER:
+            {
+                ASTPointer *ptr = (ASTPointer *)type->type;
+                resolve_type(ptr->type,ident_map);
+                break;
+            }
+            case ASTDataType::STRUCT:
+            {
+                ASTStruct *Struct = (ASTStruct *)type->type;
+
+                if (ident_map->lookup(Struct->ident))
+                {
+                    Struct->ident = ident_map->get(Struct->ident);
+                }
+                else
+                {
+                    fatal("ündeclared Struct Type");
+                }
+                break;
+            }
+        }
+    }
+
+
+    void resolve_struct_decl(ASTStructDecl *decl,StructMap *ident_map)
+    {
+        if (ident_map->lookup(decl->ident))
+        {
+            fatal("redeclared struct " + decl->ident);
+        }
+
+
+        std::string tmp_name = make_tmp(decl->ident + "_");
+        ident_map->add(decl->ident,tmp_name);
+
+
+        for(ASTStructProperty *property : decl->properties)
+        {
+            if(property == nullptr)
+			{
+				continue;
+			}
+
+           
+            resolve_type(property->type,ident_map);
         }
 
     }

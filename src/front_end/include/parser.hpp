@@ -62,6 +62,8 @@
  enum class AggregateType
  {
 	STRUCT,
+	UNION,
+	VARIANT,
 	ENUM,
  };
 
@@ -100,6 +102,16 @@ public:
 	bool is_struct(std::string name)
 	{
 		return get(name) == AggregateType::STRUCT;
+	}
+
+	bool is_union(std::string name)
+	{
+		return get(name) == AggregateType::UNION;
+	}
+
+	bool is_variant(std::string name)
+	{
+		return get(name) == AggregateType::VARIANT;
 	}
 
 };
@@ -165,98 +177,239 @@ public:
 
 	TokenType keyword_to_token(std::string keyword)
 	{
-		if (keyword == "fn")
+		if(keyword == "and")
 		{
-			return TokenType::TOKEN_KEYWORD_FN;
+			return TokenType::TOKEN_KEYWORD_AND;
 		}
-		else if (keyword == "return")
+		else if(keyword == "alloc")
 		{
-			return TokenType::TOKEN_KEYWORD_RETURN;
+			return TokenType::TOKEN_KEYWORD_ALLOC;
 		}
-		else if (keyword == "while")
+		else if(keyword == "as")
 		{
-			return TokenType::TOKEN_KEYWORD_WHILE;
+			return TokenType::TOKEN_KEYWORD_AS;
 		}
-		else if (keyword == "break")
+		else if(keyword == "break")
 		{
 			return TokenType::TOKEN_KEYWORD_BREAK;
 		}
-		else if (keyword == "cast")
+		else if(keyword == "bool")
+		{
+			return TokenType::TOKEN_KEYWORD_BOOL;
+		}
+		else if(keyword == "case")
+		{
+			return TokenType::TOKEN_KEYWORD_CASE;
+		}
+		else if(keyword == "cast")
 		{
 			return TokenType::TOKEN_KEYWORD_CAST;
 		}
-		else if (keyword == "char")
+		else if(keyword == "char")
 		{
 			return TokenType::TOKEN_KEYWORD_CHAR;
 		}
-		else if (keyword == "continue")
+		else if(keyword == "const")
+		{
+			return TokenType::TOKEN_KEYWORD_CONST;
+		}
+		else if(keyword == "continue")
 		{
 			return TokenType::TOKEN_KEYWORD_CONTINUE;
 		}
-		else if (keyword == "if")
+		else if(keyword == "default")
 		{
-			return TokenType::TOKEN_KEYWORD_IF;
+			return TokenType::TOKEN_KEYWORD_DEFAULT;
 		}
-		else if (keyword == "elif")
+		else if(keyword == "do")
+		{
+			return TokenType::TOKEN_KEYWORD_DO;
+		}
+		else if(keyword == "defer")
+		{
+			return TokenType::TOKEN_KEYWORD_DEFER;
+		}
+		else if(keyword == "elif")
 		{
 			return TokenType::TOKEN_KEYWORD_ELIF;
 		}
-		else if (keyword == "else")
+		else if(keyword == "else")
 		{
 			return TokenType::TOKEN_KEYWORD_ELSE;
 		}
-		else if (keyword == "enum")
+		else if(keyword == "enum")
 		{
 			return TokenType::TOKEN_KEYWORD_ENUM;
 		}
-		else if (keyword == "i32")
+		else if(keyword == "extern")
+		{
+			return TokenType::TOKEN_KEYWORD_EXTERN;
+		}
+		else if(keyword == "f32")
+		{
+			return TokenType::TOKEN_KEYWORD_F32;
+		}
+		else if(keyword == "f64")
+		{
+			return TokenType::TOKEN_KEYWORD_F64;
+		}
+		else if(keyword == "false")
+		{
+			return TokenType::TOKEN_KEYWORD_FALSE;
+		}
+		else if(keyword == "fn")
+		{
+			return TokenType::TOKEN_KEYWORD_FN;
+		}
+		else if(keyword == "for")
+		{
+			return TokenType::TOKEN_KEYWORD_FOR;
+		}
+		else if(keyword == "i8")
+		{
+			return TokenType::TOKEN_KEYWORD_I8;
+		}
+		else if(keyword == "i16")
+		{
+			return TokenType::TOKEN_KEYWORD_I16;
+		}
+		else if(keyword == "i32")
 		{
 			return TokenType::TOKEN_KEYWORD_I32;
 		}
-		else if (keyword == "i64")
+		else if(keyword == "i64")
 		{
 			return TokenType::TOKEN_KEYWORD_I64;
 		}
-		else if (keyword == "u32")
+		else if(keyword == "include")
 		{
-			return TokenType::TOKEN_KEYWORD_U32;
+			return TokenType::TOKEN_KEYWORD_INCLUDE;
 		}
-		else if (keyword == "u64")
+		else if(keyword == "if")
 		{
-			return TokenType::TOKEN_KEYWORD_U64;
+			return TokenType::TOKEN_KEYWORD_IF;
 		}
-		else if (keyword == "native")
-		{
-			return TokenType::TOKEN_KEYWORD_NATIVE;
-		}
-		else if (keyword == "pub")
-		{
-			return TokenType::TOKEN_KEYWORD_PUB;
-		}
-		else if (keyword == "impl")
+		else if(keyword == "impl")
 		{
 			return TokenType::TOKEN_KEYWORD_IMPL;
 		}
-		else if (keyword == "new")
-		{
-			return TokenType::TOKEN_KEYWORD_NEW;
-		}
-		else if (keyword == "self")
-		{
-			return TokenType::TOKEN_KEYWORD_SELF;
-		}
-		else if (keyword == "struct")
-		{
-			return TokenType::TOKEN_KEYWORD_STRUCT;
-		}
-		else if (keyword == "loop")
+		else if(keyword == "loop")
 		{
 			return TokenType::TOKEN_KEYWORD_LOOP;
 		}
-		else if (keyword == "void")
+		else if(keyword == "match")
+		{
+			return TokenType::TOKEN_KEYWORD_MATCH;
+		}
+		else if(keyword == "native")
+		{
+			return TokenType::TOKEN_KEYWORD_NATIVE;
+		}
+		else if(keyword == "new")
+		{
+			return TokenType::TOKEN_KEYWORD_NEW;
+		}
+		else if(keyword == "~new")
+		{
+			return TokenType::TOKEN_KEYWORD_NOT_NEW;
+		}
+		else if(keyword == "not")
+		{
+			return TokenType::TOKEN_KEYWORD_NOT;
+		}
+		else if(keyword == "null")
+		{
+			return TokenType::TOKEN_KEYWORD_NULL;
+		}
+		else if(keyword == "or")
+		{
+			return TokenType::TOKEN_KEYWORD_OR;
+		}
+		else if(keyword == "pass")
+		{
+			return TokenType::TOKEN_KEYWORD_PASS;
+		}
+		else if(keyword == "pub")
+		{
+			return TokenType::TOKEN_KEYWORD_PUB;
+		}
+		else if(keyword == "require")
+		{
+			return TokenType::TOKEN_KEYWORD_REQUIRE;
+		}
+		else if(keyword == "return")
+		{
+			return TokenType::TOKEN_KEYWORD_RETURN;
+		}
+		else if(keyword == "scoped_defer")
+		{
+			return TokenType::TOKEN_KEYWORD_SCOPED_DEFER;
+		}
+		else if(keyword == "self")
+		{
+			return TokenType::TOKEN_KEYWORD_SELF;
+		}
+		else if(keyword == "sizeof")
+		{
+			return TokenType::TOKEN_KEYWORD_SIZEOF;
+		}
+		else if(keyword == "siri")
+		{
+			return TokenType::TOKEN_KEYWORD_SIRI;
+		}
+		else if(keyword == "static")
+		{
+			return TokenType::TOKEN_KEYWORD_STATIC;
+		}
+		else if(keyword == "struct")
+		{
+			return TokenType::TOKEN_KEYWORD_STRUCT;
+		}
+		else if(keyword == "switch")
+		{
+			return TokenType::TOKEN_KEYWORD_SWITCH;
+		}
+		else if(keyword == "true")
+		{
+			return TokenType::TOKEN_KEYWORD_TRUE;
+		}
+		else if(keyword == "u8")
+		{
+			return TokenType::TOKEN_KEYWORD_U8;
+		}
+		else if(keyword == "u16")
+		{
+			return TokenType::TOKEN_KEYWORD_U16;
+		}
+		else if(keyword == "u32")
+		{
+			return TokenType::TOKEN_KEYWORD_U32;
+		}
+		else if(keyword == "u64")
+		{
+			return TokenType::TOKEN_KEYWORD_U64;
+		}
+		else if(keyword == "union")
+		{
+			return TokenType::TOKEN_KEYWORD_UNION;
+		}
+		else if(keyword == "variant")
+		{
+			return TokenType::TOKEN_KEYWORD_VARIANT;
+		}
+		else if(keyword == "void")
 		{
 			return TokenType::TOKEN_KEYWORD_VOID;
 		}
+		else if(keyword == "while")
+		{
+			return TokenType::TOKEN_KEYWORD_WHILE;
+		}
+		else if(keyword == "with")
+		{
+			return TokenType::TOKEN_KEYWORD_WITH;
+		}
+
 
 		return TokenType::TOKEN_EOF;
 	}
@@ -467,11 +620,28 @@ public:
 
 		Tokens token = *(peek());
 
-		if (token.type == TokenType::TOKEN_KEYWORD_I32)
+		
+		if (token.type == TokenType::TOKEN_KEYWORD_I8)
+		{
+			return true;
+		}
+		else if (token.type == TokenType::TOKEN_KEYWORD_I16)
+		{
+			return true;
+		}
+		else if (token.type == TokenType::TOKEN_KEYWORD_I32)
 		{
 			return true;
 		}
 		else if (token.type == TokenType::TOKEN_KEYWORD_I64)
+		{
+			return true;
+		}
+		else if (token.type == TokenType::TOKEN_KEYWORD_U8)
+		{
+			return true;
+		}
+		else if (token.type == TokenType::TOKEN_KEYWORD_U16)
 		{
 			return true;
 		}
@@ -480,6 +650,10 @@ public:
 			return true;
 		}
 		else if (token.type == TokenType::TOKEN_KEYWORD_U64)
+		{
+			return true;
+		}
+		else if (token.type == TokenType::TOKEN_KEYWORD_BOOL)
 		{
 			return true;
 		}
@@ -710,7 +884,7 @@ public:
 				}
 				else
 				{
-					fatal(" invalid use of 'pub' in " + (*(peek())).get_type());
+					fatal(" invalid use of 'extern' in " + (*(peek())).get_type());
 				}
 				break;
 			}
@@ -748,6 +922,12 @@ public:
 			{
 				ASTEnumDecl *decl_val = parse_enum_decl();		
 				decl = new(mem) ASTDeclaration(ASTDeclarationType::ENUM,decl_val);
+				break;
+			}
+			case TokenType::TOKEN_KEYWORD_UNION:
+			{
+				ASTUnionDecl *decl_val = parse_union_decl();		
+				decl = new(mem) ASTDeclaration(ASTDeclarationType::UNION,decl_val);
 				break;
 			}
 			case TokenType::TOKEN_KEYWORD_STRUCT:
@@ -789,6 +969,52 @@ public:
 
 		return decl;
 	}
+
+
+	
+
+	ASTUnionDecl *parse_union_decl(bool is_public = false)
+	{
+		void *mem = alloc(sizeof(ASTStructDecl));
+		ASTUnionDecl *decl = new(mem) ASTUnionDecl();
+
+		decl->add_public(is_public);
+
+		expect_keyword("union");
+		if (match_identifier())
+		{
+			std::string ident = consume().string;
+			this->table.add(ident,AggregateType::UNION);
+			decl->add_ident(ident);
+		}
+
+		expect_symbol(":");
+
+		while (not is_token(":"))
+		{
+			ASTType *type = parse_type();
+
+			std::string ident;
+
+			if (match_identifier())
+			{
+				ident = consume().string;
+			}
+			else
+			{
+				fatal("expected a property name in struct");
+			}
+
+			mem = alloc(sizeof(ASTStructProperty));
+			ASTStructProperty *property = new(mem) ASTStructProperty(type,ident);
+			decl->add_property(property);
+		}
+
+		expect_symbol(":");
+
+		return decl;
+	}
+
 
 
 	ASTStructDecl *parse_struct_decl(bool is_public = false)
@@ -895,13 +1121,27 @@ public:
 
 		expect_symbol("(");
 
+
+		mem = alloc(sizeof(ASTStruct));
+		ASTStruct *Struct = new(mem) ASTStruct(base);
+
 		mem = alloc(sizeof(ASTType));
 		ASTType *type = new(mem) ASTType();
 
+		type->add_type_type(ASTDataType::STRUCT);
+		type->add_type(Struct);
 
-		type->add_type(ASTDataType::STRUCT);
-		type->add_ident(base);
-		type->add_ptr(1);
+
+		mem = alloc(sizeof(ASTPointer));
+		ASTPointer *ptr = new(mem) ASTPointer(type);
+
+		mem = alloc(sizeof(ASTType));
+		type = new(mem) ASTType();
+
+		type->add_type_type(ASTDataType::STRUCT);
+		type->add_type(Struct);
+
+
 
 		mem = alloc(sizeof(ASTFunctionArgument));
 		ASTFunctionArgument *arg = new(mem) ASTFunctionArgument(type,"self");
@@ -1010,7 +1250,7 @@ public:
 		expect_string_literal("C");
 		expect_symbol(":");
 
-		while (not is_token("."))
+		while (not is_token(":"))
 		{
 			ASTFunctionDeclNative *fn_decl = parse_fn_decl_native();
 			decl->add_function(fn_decl);
@@ -1141,6 +1381,73 @@ public:
 		return arg;
 	}
 
+
+	ASTDataType get_type()
+	{
+		ASTDataType data_type;
+		if (is_token_string("void"))
+		{
+			data_type = ASTDataType::VOID;
+			consume();
+		}
+		else if (is_token_string("bool"))
+		{
+			data_type = ASTDataType::BOOL;
+			consume();
+		}
+		else if (is_token_string("char"))
+		{
+			data_type = ASTDataType::CHAR;
+			consume();
+		}
+		else if (is_token_string("i8"))
+		{
+			data_type = ASTDataType::I8;
+			consume();
+		}
+		else if (is_token_string("i16"))
+		{
+			data_type = ASTDataType::I16;
+			consume();
+		}
+		else if (is_token_string("i32"))
+		{
+			data_type = ASTDataType::I32;
+			consume();
+		}
+		else if (is_token_string("i64"))
+		{
+			data_type = ASTDataType::I64;
+			consume();
+		}
+		else if (is_token_string("u8"))
+		{
+			data_type = ASTDataType::U8;
+			consume();
+		}
+		else if (is_token_string("u16"))
+		{
+			data_type = ASTDataType::U16;
+			consume();
+		}
+		else if (is_token_string("u32"))
+		{
+			data_type = ASTDataType::U32;
+			consume();
+		}
+		else if (is_token_string("u64"))
+		{
+			data_type = ASTDataType::U64;
+			consume();
+		}
+		else
+		{
+			DEBUG_PRINT("  parse type : sanity check ",(*(peek())).get_type() + " =>  " + (*(peek())).string);
+		}
+
+		return data_type;
+	}
+
 	/**
 	 * Parses a type specification, including pointer modifiers.
 	 */
@@ -1154,54 +1461,48 @@ public:
 
 		if (match_type())
 		{
-			if (is_token_string("void"))
-			{
-				data_type = ASTDataType::VOID;
-				consume();
-			}
-			else if (is_token_string("char"))
-			{
-				data_type = ASTDataType::CHAR;
-				consume();
-			}
-			else if (is_token_string("i32"))
-			{
-				data_type = ASTDataType::I32;
-				consume();
-			}
-			else if (is_token_string("i64"))
-			{
-				data_type = ASTDataType::I64;
-				consume();
-			}
-			else if (is_token_string("u32"))
-			{
-				data_type = ASTDataType::U32;
-				consume();
-			}
-			else if (is_token_string("u64"))
-			{
-				data_type = ASTDataType::U64;
-				consume();
-			}
-			else
-			{
-				DEBUG_PRINT("  parse type : sanity check ",(*(peek())).get_type() + " =>  " + (*(peek())).string);
-			}
+			data_type = get_type();
+			type->add_type_type(data_type);
 		}
 		else if(is_identifier())
 		{
 			std::string base = consume().string;
 			if(this->table.is_enum(base))
 			{
-				ident = base;
 				data_type = ASTDataType::ENUM;
+				mem = alloc(sizeof(ASTEnum));
+				ASTEnum *Enum = new(mem) ASTEnum(base);
+
+				type->add_type_type(data_type);
+				type->add_type(Enum);
 			}
 			else if(this->table.is_struct(base))
 			{
-				ident = base;
 				data_type = ASTDataType::STRUCT;
+				mem = alloc(sizeof(ASTStruct));
+				ASTStruct *Struct = new(mem) ASTStruct(base);
+
+				type->add_type_type(data_type);
+				type->add_type(Struct);
 			}
+			else if(this->table.is_union(base))
+			{
+				data_type = ASTDataType::UNION;
+				mem = alloc(sizeof(ASTUnion));
+				ASTUnion *Union = new(mem) ASTUnion(base);
+
+				type->add_type_type(data_type);
+				type->add_type(Union);
+			}/*
+			else if(this->table.is_variant(base))
+			{
+				data_type = ASTDataType::VARIANT;
+				mem = alloc(sizeof(ASTEnum));
+				ASTEnum *Enum = new(mem) ASTEnum(base);
+
+				type->add_type_type(data_type);
+				type->add_type(Enum);
+			}*/
 			else
 			{
 				fatal("identifier used as a type");
@@ -1209,17 +1510,25 @@ public:
 		}
 		else
 		{
-			fatal("unsupported types # " + std::to_string((int)peek()->type));
+			fatal("unsupported types (parse type) " + std::to_string((int)peek()->type));
 		}
-
-		type->add_type(data_type);
-		type->add_ident(ident);
 
 		while (is_token("*"))
 		{
-			type->add_ptr(1);
+			puts("parser pointer");
 			consume();
+
+			mem = alloc(sizeof(ASTPointer));
+			ASTPointer *ptr = new(mem) ASTPointer(type);
+
+			mem = alloc(sizeof(ASTType));
+			type = new(mem) ASTType();
+
+			type->add_type_type(ASTDataType::POINTER);
+			type->add_type(ptr);
 		}
+
+		printf("type : %d\n",(int)type->type_type);
 
 		return type;
 	}
@@ -1270,6 +1579,13 @@ public:
 				stmt = new(mem) ASTStatement(stmt_type,stmt_stmt);
 				break;
 			}
+			case TokenType::TOKEN_KEYWORD_DEFER:
+			{
+				ASTStatementType stmt_type = ASTStatementType::DEFER;
+				ASTDeferStmt *stmt_stmt = parse_defer_stmt();
+				stmt = new(mem) ASTStatement(stmt_type,stmt_stmt);
+				break;
+			}
 			case TokenType::TOKEN_KEYWORD_WHILE:
 			{
 				ASTStatementType stmt_type = ASTStatementType::WHILE;
@@ -1305,6 +1621,13 @@ public:
 				stmt = new(mem) ASTStatement(stmt_type,stmt_stmt);
 				break;
 			}
+			case TokenType::TOKEN_KEYWORD_SWITCH:
+			{
+				ASTStatementType stmt_type = ASTStatementType::SWITCH;
+				ASTSwitchStmt *stmt_stmt = parse_switch_stmt();
+				stmt = new(mem) ASTStatement(stmt_type,stmt_stmt);
+				break;
+			}
 			case TokenType::TOKEN_KEYWORD_STATIC:
 			{
 				consume();
@@ -1314,6 +1637,7 @@ public:
 					ASTVarDecl *stmt_stmt = parse_vardecl(false,true);
 					stmt = new(mem) ASTStatement(stmt_type,stmt_stmt);
 				}
+				break;
 			}
 			default:
 			{
@@ -1372,14 +1696,16 @@ public:
 		{
 			expect_symbol("=");
 
-			if(type->type == ASTDataType::STRUCT and type->ptr == 0)
+			if(type->type_type == ASTDataType::STRUCT)
 			{
+				ASTStruct *Struct = (ASTStruct *)type->type;
+
 				void *mem = alloc(sizeof(ASTVarStructInit));
 				ASTVarStructInit *struct_init = new(mem)ASTVarStructInit();
 				init_type = ASTVarInitType::STRUCT;
 
 				std::string struct_name = consume().string;
-				if(type->ident != struct_name)
+				if(Struct->ident != struct_name)
 				{
 					fatal("unmatching var declarsation with struct init");
 				}
@@ -1428,11 +1754,6 @@ public:
 
 		mem = alloc(sizeof(ASTVarDecl));
 		ASTVarDecl *decl = new(mem) ASTVarDecl(type,ident,var_init,is_public,is_static,is_extern);
-
-		if(type->type == ASTDataType::STRUCT)
-		{
-			this->symbol.add(decl->ident,type->ident);
-		}
 
 		return decl;
 	}
@@ -1520,6 +1841,97 @@ public:
 
 		return stmt;
 	}
+
+
+
+
+
+	ASTSwitchCase *parse_switch_case()
+	{
+		expect_keyword("case");
+		ASTExpression *expr = parse_expr(0);
+
+		ASTBlockStmt *block = nullptr;
+
+		if (match_symbol(":"))
+		{
+			block = parse_block_stmt();
+		}
+		else
+		{
+			fatal(" expected a block after an case but got   " + (*(peek())).get_type());
+		}
+
+		void *mem = alloc(sizeof(ASTSwitchCase));
+		ASTSwitchCase *case_block = new(mem) ASTSwitchCase(expr,block);
+		return case_block;
+	}
+
+
+	/**
+	 * Parses a default block
+	 */
+	
+	ASTSwitchDefault *parse_switch_default()
+	{
+		expect_keyword("default");
+
+		ASTBlockStmt *block = nullptr;
+
+		if (match_symbol(":"))
+		{
+			block = parse_block_stmt();
+		}
+		else
+		{
+			fatal(" expected a block after an default but got   " + (*(peek())).get_type());
+		}
+
+		void *mem = alloc(sizeof(ASTSwitchDefault));
+		ASTSwitchDefault *default_block = new(mem) ASTSwitchDefault(block);
+		return default_block;
+	}
+
+	/**
+	 * switch statement.
+	 */
+
+	ASTSwitchStmt *parse_switch_stmt()
+	{
+		void *mem = alloc(sizeof(ASTSwitchStmt));
+		ASTSwitchStmt *stmt = new(mem) ASTSwitchStmt();
+
+		expect_keyword("switch");
+		ASTExpression *expr = parse_expr(0);
+		stmt->add_expr(expr);
+
+		expect_symbol(":");
+		
+		while ( match_keyword("case"))
+		{
+			ASTSwitchCase *case_block = parse_switch_case();
+			stmt->add_case(case_block);
+		}
+
+		if ( match_keyword("default"))
+		{
+			ASTSwitchDefault *default_block = parse_switch_default();
+			stmt->add_default(default_block);
+		}
+
+		
+		expect_symbol(":");
+
+		return stmt;
+	}
+
+
+
+
+
+
+
+
 
 
 	/**
@@ -1619,6 +2031,23 @@ public:
 
 		void *mem = alloc(sizeof(ASTReturnStmt));
 		ASTReturnStmt *stmt = new(mem) ASTReturnStmt(expr);
+		return stmt;
+	}
+
+
+	
+
+	/**
+	 * Parses a defer statment
+	 */
+
+	ASTDeferStmt *parse_defer_stmt()
+	{
+		expect_keyword("defer");
+		ASTExpression *expr = parse_expr(0);
+
+		void *mem = alloc(sizeof(ASTDeferStmt));
+		ASTDeferStmt *stmt = new(mem) ASTDeferStmt(expr);
 		return stmt;
 	}
 
@@ -1858,7 +2287,7 @@ public:
 		{
 			if (is_token("."))
 			{
-				consume(); // eat '.'
+				consume();
 
 				if(expr->type == ASTExpressionType::VARIABLE and this->table.lookup(((ASTVariableExpr *)expr->expr)->ident) and this->table.is_enum(((ASTVariableExpr *)expr->expr)->ident))
 				{
@@ -1870,38 +2299,56 @@ public:
 				else
 				{
 					if (!is_identifier())
+					{
 						fatal("expected field name after '.'");
+					}
 
 					std::string field = consume().string;
 
-					void* mem = alloc(sizeof(ASTStructAccessExpr));
-					ASTStructAccessExpr* expr1 = new(mem) ASTStructAccessExpr(expr, field);
-
-					std::string base_type;
-
-					if(expr->type == ASTExpressionType::VARIABLE)
+					if(is_token("("))
 					{
-						std::string var = ((ASTVariableExpr *)expr->expr)->true_ident;
-						if(this->symbol.lookup(var) == true)
+						void* mem = alloc(sizeof(ASTStructAccessExpr));
+						ASTStructMethodCallExpr* expr1 = new(mem) ASTStructMethodCallExpr(expr, field);
+
+						expect_symbol("(");
+
+						while (not is_token(")"))
 						{
-							base_type = this->symbol.get(var);	
+							expr1->add_arg(parse_expr(0));
+
+							if (is_token(")"))
+							{
+								break;
+							}
+
+							expect_symbol(",");
 						}
+
+						expect_symbol(")");
+
+						mem = alloc(sizeof(ASTExpression));
+						expr = new(mem) ASTExpression(ASTExpressionType::STRUCT_METHOD_CALL,expr1);
 					}
+					else
+					{
+						void* mem = alloc(sizeof(ASTStructAccessExpr));
+						ASTStructAccessExpr* expr1 = new(mem) ASTStructAccessExpr(expr, field);
 
-					expr1->add_base_type(base_type);
-
-					mem = alloc(sizeof(ASTExpression));
-					expr = new(mem) ASTExpression(ASTExpressionType::STRUCT_ACCESS,expr1);
+						mem = alloc(sizeof(ASTExpression));
+						expr = new(mem) ASTExpression(ASTExpressionType::STRUCT_ACCESS,expr1);
+					}
 				}
 				
 			}
 			else if (is_token("->"))
 			{
-				consume(); // eat '->'
+				consume();
 
 				
 				if (!is_identifier())
+				{
 					fatal("expected field name after '->'");
+				}
 
 				std::string field = consume().string;
 

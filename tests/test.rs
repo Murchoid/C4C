@@ -1,3 +1,4 @@
+/*
 enum OpenFlag:
     O_RDONLY    = 0      // open for reading only
     O_WRONLY    = 1      // open for writing only
@@ -30,16 +31,72 @@ native "C":
 :
 
 
+union Data:
+    i32 fd
+    i64 ret
+:
+
 fn main()->i32:
     i32 fd = open("test.rs",OpenFlag.O_RDONLY,0)
     char *buf = malloc(1000)
     read(fd,buf,1000)
-    puts(buf)
+    //puts(buf)
     free(buf)
+
+    switch fd:
+        case 0:
+            puts("0")
+        :
+        case 1:
+            puts("1")
+        :
+        case 2:
+            puts("2")
+        :
+        case 3:
+            puts("3")
+        :
+        default:
+            puts("default")
+        :
+    :
+
     return 0
 :
 
+*/
 
+struct Color:
+    i32 red
+    i32 green
+    i32 blue
+:
+
+impl Color:
+    fn new(i32 red,i32 green,i32 blue):
+        self->red = red
+        self->green = green
+        self->blue = blue
+    :
+
+    fn get_red()->i32:
+        return self.red
+    :
+:
+
+fn main()->i32:
+    i32 age = 90
+    i32 *ptr1 = &age
+    i32 **ptr2 = &ptr1
+
+    Color color = Color:
+        .red = 90,
+        .green = 89,
+        .blue = 78,
+    :
+
+    return color.get_red()
+:
 
 
 

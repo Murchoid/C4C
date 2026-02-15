@@ -8,8 +8,8 @@
 #include "middle_end/C/include/ast_to_c.hpp"
 
 #include "front_end/include/identifier_resolution.hpp"
-#include "front_end/include/type_checking.hpp"
-#include "front_end/include/loop_labelling.hpp"
+//#include "front_end/include/type_checking.hpp"
+//#include "front_end/include/loop_labelling.hpp"
 
 /*
 #include "middle_end/JS/include/ast_to_js.hpp"
@@ -52,20 +52,22 @@ int main(int argc,char *argv[])
 		DEBUG_PRINT("sanity check : ", " after parser ");
 		//arena.reset();
 
-		//AstToC C(file_name,parser.program);
-		//StringToFile(file_name.substr(0, file_name.length() - 3) + ".c",C.string);
-
-	
-
 		IdentifierResolution resolve(file_name,parser.program);
 
+		DEBUG_PRINT("sanity check : ", " after ident resolution ");
+
+
+		AstToC C(file_name,parser.program);
+		StringToFile(file_name.substr(0, file_name.length() - 3) + ".c",C.string);
+
+		return 0;
 
 		//AstToJS JS(file_name,resolve.program);
 		//StringToFile(file_name.substr(0, file_name.length() - 3) + ".js",JS.string);
 		
 
 	
-
+/*
 		TypeChecking type_check(file_name,resolve.program);
 		DEBUG_PRINT("sanity check : ", " after resolve ");
 		
@@ -74,7 +76,7 @@ int main(int argc,char *argv[])
 		AstToC C(file_name,loop_label.program);
 		StringToFile(file_name.substr(0, file_name.length() - 3) + ".c",C.string);
 
-		/*
+		
 
 		AstToTac tac(file_name,loop_label.program,&arena,loop_label.global_counter,type_check.table);
 

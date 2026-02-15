@@ -61,6 +61,7 @@ enum class ASTDeclarationType
 	FUNCTION,
 	NATIVE,
 	ENUM,
+	UNION,
 	STRUCT,
 	IMPL,
 };
@@ -187,6 +188,37 @@ public:
 };
 
 
+
+class ASTUnionDecl
+{
+public:
+	bool is_public;
+	std::string ident;
+	std::vector<ASTStructProperty *>properties;
+
+	ASTUnionDecl()
+	{
+		this->is_public = false;
+	}
+
+	void add_public(bool is_public)
+	{
+		this->is_public = is_public;
+	}
+
+	void add_ident(std::string ident)
+	{
+		this->ident = ident;
+	}
+
+	void add_property(ASTStructProperty *property)
+	{
+		this->properties.push_back(property);
+	}
+
+};
+
+
 class ASTStructDecl
 {
 public:
@@ -263,16 +295,102 @@ enum class ASTDataType
 {
 	VOID,
 	CHAR,
+	BOOL,
+	I8,
+	I16,
 	I32,
 	I64,
+	U8,
+	U16,
 	U32,
 	U64,
 	F32,
 	F64,
+	POINTER,
 	STRUCT,
+	UNION,
+	VARIANT,
 	ENUM,
 };
 
+
+
+class ASTType
+{
+public:
+	ASTDataType type_type;
+	void *type;
+
+	void add_type_type(ASTDataType type_type)
+	{
+		this->type_type = type_type;
+	}
+
+	void add_type(void *type)
+	{
+		this->type = type;
+	}
+};
+
+class ASTPointer
+{
+public:
+	ASTType *type;
+	ASTPointer(ASTType *type)
+	{
+		this->type = type;
+	}
+};
+
+
+class ASTArray
+{
+public:
+	ASTType *type;
+	long size = 0;
+	ASTArray(ASTType *type,long size)
+	{
+		this->type = type;
+		this->size = size;
+	}
+};
+
+
+class ASTStruct
+{
+public:
+	std::string ident;
+	ASTStruct(std::string ident)
+	{
+		this->ident = ident;
+	}
+};
+
+
+
+class ASTUnion
+{
+public:
+	std::string ident;
+	ASTUnion(std::string ident)
+	{
+		this->ident = ident;
+	}
+};
+
+
+
+class ASTEnum
+{
+public:
+	std::string ident;
+	ASTEnum(std::string ident)
+	{
+		this->ident = ident;
+	}
+};
+
+/*
 
 class ASTType
 {
@@ -314,6 +432,7 @@ public:
 
 };
 
+*/
 
 class ASTFunctionArgument
 {
@@ -429,6 +548,9 @@ enum class ASTStatementType
 	LOOP,
 	BREAK,
 	CONTINUE,
+	DEFER,
+	SCOPED_DEFER,
+	SWITCH,
 };
 
 
@@ -639,6 +761,58 @@ public:
 
 
 
+class ASTSwitchDefault
+{
+public:
+	ASTBlockStmt *block;
+
+	ASTSwitchDefault(ASTBlockStmt *block)
+	{
+		this->block = block;
+	}
+};
+
+
+class ASTSwitchCase
+{
+public:
+	ASTExpression *expr;
+	ASTBlockStmt *block;
+
+	ASTSwitchCase(ASTExpression *expr,ASTBlockStmt *block)
+	{
+		this->expr = expr;
+		this->block = block;
+	}
+};
+
+class ASTSwitchStmt
+{
+public:
+	ASTExpression *expr;
+	std::vector <ASTSwitchCase *>cases;
+	ASTSwitchDefault *default_block;
+
+	inline void add_expr(ASTExpression *expr)
+	{
+		this->expr = expr;
+	}
+
+	inline void add_case(ASTSwitchCase *case_block)
+	{
+		this->cases.push_back(case_block);
+	}
+
+	inline void add_default(ASTSwitchDefault *default_block)
+	{
+		this->default_block = default_block;
+	}
+
+};
+
+
+
+
 class ASTIfStmt
 {
 public:
@@ -706,6 +880,17 @@ public:
 };
 
 
+class ASTDeferStmt
+{
+public:
+	ASTExpression *expr;
+	ASTDeferStmt(ASTExpression *expr)
+	{
+		this->expr = expr;
+	}
+};
+
+
 
 enum class ASTExpressionType
 {
@@ -729,6 +914,7 @@ enum class ASTExpressionType
 	ARRAY,
 	ENUM_ACCESS,
 	STRUCT_ACCESS,
+	STRUCT_METHOD_CALL,
 	STRUCT_PTR_ACCESS,
 	POST_INCREMENT,
 	POST_DECREMENT,
@@ -1116,6 +1302,45 @@ public:
 	}
 };
 
+
+
+
+class ASTStructMethodCallExpr
+{
+public:
+	ASTExpression *base;
+	std::string member;
+	DataType data_type;
+	AggType agg_type;
+	std::string base_type;
+	std::vector<ASTExpression *> args;
+
+	inline void add_arg(ASTExpression *arg)
+	{
+		this->args.push_back(arg);
+	}
+
+	void add_base_type(std::string ident)
+	{
+		this->base_type = ident;
+	}
+
+	void add_agg_type(std::string ident)
+	{
+		this->agg_type.set(ident);
+	}
+
+	void add_data_type(DataType data_type)
+	{
+		this->data_type = data_type;
+	}
+
+	ASTStructMethodCallExpr(ASTExpression *base,std::string member)
+	{
+		this->base = base;
+		this->member = member;
+	}
+};
 
 
 
