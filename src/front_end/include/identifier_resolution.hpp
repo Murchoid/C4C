@@ -108,6 +108,7 @@ public:
 	ASTProgram *program;
     std::string global_ident;
     int global_counter = 0;
+    StructMap *struct_map;
 
     IdentifierResolution(std::string file_name,ASTProgram *program)
     {
@@ -211,7 +212,7 @@ public:
     }
 
 
-    void resolve_type(ASTType *type,StructMap *ident_map)
+    void resolve_type(ASTType *type)
     {
         switch(type->type_type)
         {
@@ -231,16 +232,16 @@ public:
             case ASTDataType::POINTER:
             {
                 ASTPointer *ptr = (ASTPointer *)type->type;
-                resolve_type(ptr->type,ident_map);
+                resolve_type(ptr->type);
                 break;
             }
             case ASTDataType::STRUCT:
             {
                 ASTStruct *Struct = (ASTStruct *)type->type;
 
-                if (ident_map->lookup(Struct->ident))
+                if (this->struct_map->lookup(Struct->ident))
                 {
-                    Struct->ident = ident_map->get(Struct->ident);
+                    Struct->ident = this->struct_map->get(Struct->ident);
                 }
                 else
                 {
@@ -252,16 +253,16 @@ public:
     }
 
 
-    void resolve_struct_decl(ASTStructDecl *decl,StructMap *ident_map)
+    void resolve_struct_decl(ASTStructDecl *decl)
     {
-        if (ident_map->lookup(decl->ident))
+        if (this->struct_map->lookup(decl->ident))
         {
             fatal("redeclared struct " + decl->ident);
         }
 
 
         std::string tmp_name = make_tmp(decl->ident + "_");
-        ident_map->add(decl->ident,tmp_name);
+        this->struct_map->add(decl->ident,tmp_name);
 
 
         for(ASTStructProperty *property : decl->properties)
@@ -272,7 +273,7 @@ public:
 			}
 
            
-            resolve_type(property->type,ident_map);
+            resolve_type(property->type);
         }
 
     }
@@ -532,6 +533,12 @@ public:
                 {
                     fatal("undeclared variable  :  " + name);
                 }
+                break;
+            }
+            case ASTExpressionType::STRUCT_METHOD_CALL:
+            {
+                ASTStructMethodCallExpr *Struct = (ASTStructMethodCallExpr *)expr->expr;
+                resolve_expr(Struct->base,ident_map);
                 break;
             }
             case ASTExpressionType::FUNCTION_CALL:

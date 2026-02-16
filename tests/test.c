@@ -47,12 +47,35 @@ typedef f64 *  f64_ptr;
 
 typedef void * void_ptr;
 
+
+
 struct Color
 {
 	i32 red;
 	i32 green;
 	i32 blue;
 };
+
+
+i32 Color_huh(struct Color *self)
+{
+	self->red = 0;
+	return 0;
+}
+
+
+void Color_newh(struct Color *self,i32 red,i32 green,i32 blue)
+{
+	self->red = red;
+	self->green = green;
+	self->blue = blue;
+}
+
+
+i32 Color_get_red(struct Color *self)
+{
+	return self->red;
+}
 
 i32 main()
 {
@@ -65,5 +88,5 @@ i32 main()
 		.red = 90,
 	};
 
-	return color.blue;
+	return Color_huh(&color);
 }

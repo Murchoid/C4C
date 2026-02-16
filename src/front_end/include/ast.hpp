@@ -311,6 +311,7 @@ enum class ASTDataType
 	UNION,
 	VARIANT,
 	ENUM,
+	FUNCTION,
 };
 
 
@@ -342,6 +343,19 @@ public:
 	}
 };
 
+
+class ASTFunction
+{
+public:
+	ASTType *return_type;
+	std::vector<ASTType *> args;
+
+	ASTFunction(ASTType *return_type,std::vector<ASTType *>args)
+	{
+		this->return_type = return_type;
+		this->args = args;
+	}
+};
 
 class ASTArray
 {
@@ -962,22 +976,9 @@ class ASTExpression
 public:
 	ASTExpressionType type;
 	void *expr;
-	DataType data_type;
-	PointerType ptr_type;
-	AggType agg_type;
+	ASTType *data_type;
 
-	void add_agg_type(std::string ident)
-	{
-		this->agg_type.set(ident);
-	}
-
-
-	void add_pointer_type(bool is_ptr,DataType base_type,int ptr_no)
-	{
-		this->ptr_type.set(is_ptr,base_type,ptr_no);
-	}
-
-	void add_data_type(DataType data_type)
+	void add_data_type(ASTType *data_type)
 	{
 		this->data_type = data_type;
 	}
@@ -995,21 +996,9 @@ class ASTAddressOfExpr
 {
 public:
 	ASTExpression *expr;
-	DataType data_type;
-	PointerType ptr_type;
-	AggType agg_type;
+	ASTType *data_type;
 
-	void add_agg_type(std::string ident)
-	{
-		this->agg_type.set(ident);
-	}
-
-	void add_pointer_type(bool is_ptr,DataType base_type,int ptr_no)
-	{
-		this->ptr_type.set(is_ptr,base_type,ptr_no);
-	}
-
-	void add_data_type(DataType data_type)
+	void add_data_type(ASTType *data_type)
 	{
 		this->data_type = data_type;
 	}
@@ -1028,21 +1017,9 @@ class ASTPtrReadExpr
 {
 public:
 	ASTExpression *expr;
-	DataType data_type;
-	PointerType ptr_type;
-	AggType agg_type;
+	ASTType *data_type;
 
-	void add_agg_type(std::string ident)
-	{
-		this->agg_type.set(ident);
-	}
-
-	void add_pointer_type(bool is_ptr,DataType base_type,int ptr_no)
-	{
-		this->ptr_type.set(is_ptr,base_type,ptr_no);
-	}
-
-	void add_data_type(DataType data_type)
+	void add_data_type(ASTType *data_type)
 	{
 		this->data_type = data_type;
 	}
@@ -1060,21 +1037,9 @@ class ASTPtrWriteExpr
 public:
 	ASTExpression *expr;
 	ASTExpression *data;
-	DataType data_type;
-	PointerType ptr_type;
-	AggType agg_type;
+	ASTType *data_type;
 
-	void add_agg_type(std::string ident)
-	{
-		this->agg_type.set(ident);
-	}
-
-	void add_pointer_type(bool is_ptr,DataType base_type,int ptr_no)
-	{
-		this->ptr_type.set(is_ptr,base_type,ptr_no);
-	}
-
-	void add_data_type(DataType data_type)
+	void add_data_type(ASTType *data_type)
 	{
 		this->data_type = data_type;
 	}
@@ -1093,21 +1058,9 @@ class ASTArrayExpr
 public:
 	ASTExpression *expr;
 	ASTExpression *index;
-	DataType data_type;
-	PointerType ptr_type;
-	AggType agg_type;
+	ASTType *data_type;
 
-	void add_agg_type(std::string ident)
-	{
-		this->agg_type.set(ident);
-	}
-
-	void add_pointer_type(bool is_ptr,DataType base_type,int ptr_no)
-	{
-		this->ptr_type.set(is_ptr,base_type,ptr_no);
-	}
-
-	void add_data_type(DataType data_type)
+	void add_data_type(ASTType *data_type)
 	{
 		this->data_type = data_type;
 	}
@@ -1125,9 +1078,9 @@ class ASTStringExpr
 {
 public:
 	std::string value;
-	DataType data_type;
+	ASTType *data_type;
 
-	void add_data_type(DataType data_type)
+	void add_data_type(ASTType *data_type)
 	{
 		this->data_type = data_type;
 	}
@@ -1143,8 +1096,9 @@ class ASTI32Expr
 {
 public:
 	long int value;
-	DataType data_type;
-	void add_data_type(DataType data_type)
+	ASTType *data_type;
+
+	void add_data_type(ASTType *data_type)
 	{
 		this->data_type = data_type;
 	}
@@ -1160,8 +1114,9 @@ class ASTI64Expr
 {
 public:
 	long int value;
-	DataType data_type;
-	void add_data_type(DataType data_type)
+	ASTType *data_type;
+
+	void add_data_type(ASTType *data_type)
 	{
 		this->data_type = data_type;
 	}
@@ -1180,8 +1135,9 @@ class ASTU32Expr
 {
 public:
 	unsigned int value;
-	DataType data_type;
-	void add_data_type(DataType data_type)
+	ASTType *data_type;
+
+	void add_data_type(ASTType *data_type)
 	{
 		this->data_type = data_type;
 	}
@@ -1197,9 +1153,9 @@ class ASTU64Expr
 {
 public:
 	unsigned long int value;
-	DataType data_type;
+	ASTType *data_type;
 
-	void add_data_type(DataType data_type)
+	void add_data_type(ASTType *data_type)
 	{
 		this->data_type = data_type;
 	}
@@ -1218,8 +1174,9 @@ class ASTF32Expr
 {
 public:
 	float value;
-	DataType data_type;
-	void add_data_type(DataType data_type)
+	ASTType *data_type;
+
+	void add_data_type(ASTType *data_type)
 	{
 		this->data_type = data_type;
 	}
@@ -1235,9 +1192,9 @@ class ASTF64Expr
 {
 public:
 	double value;
-	DataType data_type;
+	ASTType *data_type;
 
-	void add_data_type(DataType data_type)
+	void add_data_type(ASTType *data_type)
 	{
 		this->data_type = data_type;
 	}
@@ -1255,9 +1212,9 @@ class ASTResolutionExpr
 {
 public:
 	std::vector<std::string> idents;
-	DataType data_type;
+	ASTType *data_type;
 
-	void add_data_type(DataType data_type)
+	void add_data_type(ASTType *data_type)
 	{
 		this->data_type = data_type;
 	}
@@ -1276,24 +1233,13 @@ class ASTStructAccessExpr
 public:
 	ASTExpression *base;
 	std::string member;
-	DataType data_type;
-	AggType agg_type;
-	std::string base_type;
+	ASTType *data_type;
 
-	void add_base_type(std::string ident)
-	{
-		this->base_type = ident;
-	}
-
-	void add_agg_type(std::string ident)
-	{
-		this->agg_type.set(ident);
-	}
-
-	void add_data_type(DataType data_type)
+	void add_data_type(ASTType *data_type)
 	{
 		this->data_type = data_type;
 	}
+
 
 	ASTStructAccessExpr(ASTExpression *base,std::string member)
 	{
@@ -1308,32 +1254,22 @@ public:
 class ASTStructMethodCallExpr
 {
 public:
+	std::string prefix = "invalid";
 	ASTExpression *base;
 	std::string member;
-	DataType data_type;
-	AggType agg_type;
-	std::string base_type;
 	std::vector<ASTExpression *> args;
+	ASTType *data_type;
+
+	void add_data_type(ASTType *data_type)
+	{
+		this->data_type = data_type;
+	}
 
 	inline void add_arg(ASTExpression *arg)
 	{
 		this->args.push_back(arg);
 	}
 
-	void add_base_type(std::string ident)
-	{
-		this->base_type = ident;
-	}
-
-	void add_agg_type(std::string ident)
-	{
-		this->agg_type.set(ident);
-	}
-
-	void add_data_type(DataType data_type)
-	{
-		this->data_type = data_type;
-	}
 
 	ASTStructMethodCallExpr(ASTExpression *base,std::string member)
 	{
@@ -1349,24 +1285,13 @@ class ASTStructPtrAccessExpr
 public:
 	ASTExpression *base;
 	std::string member;
-	DataType data_type;
-	AggType agg_type;
-	std::string base_type;
+	ASTType *data_type;
 
-	void add_base_type(std::string ident)
-	{
-		this->base_type = ident;
-	}
-
-	void add_agg_type(std::string ident)
-	{
-		this->agg_type.set(ident);
-	}
-
-	void add_data_type(DataType data_type)
+	void add_data_type(ASTType *data_type)
 	{
 		this->data_type = data_type;
 	}
+
 
 	ASTStructPtrAccessExpr(ASTExpression *base,std::string member)
 	{
@@ -1382,9 +1307,9 @@ class ASTEnumAccessExpr
 public:
 	std::string base;
 	std::string member;
-	DataType data_type;
+	ASTType *data_type;
 
-	void add_data_type(DataType data_type)
+	void add_data_type(ASTType *data_type)
 	{
 		this->data_type = data_type;
 	}
@@ -1403,21 +1328,9 @@ class ASTVariableExpr
 public:
 	std::string ident;
 	std::string true_ident;
-	DataType data_type;
-	PointerType ptr_type;
-	AggType agg_type;
+	ASTType *data_type;
 
-	void add_agg_type(std::string ident)
-	{
-		this->agg_type.set(ident);
-	}
-
-	void add_pointer_type(bool is_ptr,DataType base_type,int ptr_no)
-	{
-		this->ptr_type.set(is_ptr,base_type,ptr_no);
-	}
-
-	void add_data_type(DataType data_type)
+	void add_data_type(ASTType *data_type)
 	{
 		this->data_type = data_type;
 	}
@@ -1435,21 +1348,9 @@ class ASTSelfExpr
 {
 public:
 	std::string ident;
-	DataType data_type;
-	PointerType ptr_type;
-	AggType agg_type;
+	ASTType *data_type;
 
-	void add_agg_type(std::string ident)
-	{
-		this->agg_type.set(ident);
-	}
-
-	void add_pointer_type(bool is_ptr,DataType base_type,int ptr_no)
-	{
-		this->ptr_type.set(is_ptr,base_type,ptr_no);
-	}
-
-	void add_data_type(DataType data_type)
+	void add_data_type(ASTType *data_type)
 	{
 		this->data_type = data_type;
 	}
@@ -1466,21 +1367,9 @@ class ASTUnaryExpr
 public:
 	ASTUnaryOperator op;
 	ASTExpression *rhs;
-	DataType data_type;
-	PointerType ptr_type;
-	AggType agg_type;
+	ASTType *data_type;
 
-	void add_agg_type(std::string ident)
-	{
-		this->agg_type.set(ident);
-	}
-
-	void add_pointer_type(bool is_ptr,DataType base_type,int ptr_no)
-	{
-		this->ptr_type.set(is_ptr,base_type,ptr_no);
-	}
-
-	void add_data_type(DataType data_type)
+	void add_data_type(ASTType *data_type)
 	{
 		this->data_type = data_type;
 	}
@@ -1525,22 +1414,9 @@ public:
 	ASTExpression *lhs;
 	ASTBinaryOperator op;
 	ASTExpression *rhs;
-	DataType data_type;
-	PointerType ptr_type;
-	AggType agg_type;
+	ASTType *data_type;
 
-	void add_agg_type(std::string ident)
-	{
-		this->agg_type.set(ident);
-	}
-
-	void add_pointer_type(bool is_ptr,DataType base_type,int ptr_no)
-	{
-		this->ptr_type.set(is_ptr,base_type,ptr_no);
-	}
-
-	
-	void add_data_type(DataType data_type)
+	void add_data_type(ASTType *data_type)
 	{
 		this->data_type = data_type;
 	}
@@ -1563,21 +1439,9 @@ public:
 	ASTExpression *lhs;
 	ASTAssignOperator op;
 	ASTExpression *rhs;
-	DataType data_type;
-	PointerType ptr_type;
-	AggType agg_type;
+	ASTType *data_type;
 
-	void add_agg_type(std::string ident)
-	{
-		this->agg_type.set(ident);
-	}
-
-	void add_pointer_type(bool is_ptr,DataType base_type,int ptr_no)
-	{
-		this->ptr_type.set(is_ptr,base_type,ptr_no);
-	}
-
-	void add_data_type(DataType data_type)
+	void add_data_type(ASTType *data_type)
 	{
 		this->data_type = data_type;
 	}
@@ -1598,8 +1462,9 @@ class ASTFunctionCallExpr
 public:
 	ASTExpression *base;
 	std::vector<ASTExpression *> args;
-	DataType data_type;
-	void add_data_type(DataType data_type)
+	ASTType *data_type;
+
+	void add_data_type(ASTType *data_type)
 	{
 		this->data_type = data_type;
 	}
@@ -1623,21 +1488,9 @@ class ASTCastExpr
 public:
 	ASTDataType type;
 	ASTExpression *rhs;
-	DataType data_type;
-	PointerType ptr_type;
-	AggType agg_type;
+	ASTType *data_type;
 
-	void add_agg_type(std::string ident)
-	{
-		this->agg_type.set(ident);
-	}
-
-	void add_pointer_type(bool is_ptr,DataType base_type,int ptr_no)
-	{
-		this->ptr_type.set(is_ptr,base_type,ptr_no);
-	}
-	
-	void add_data_type(DataType data_type)
+	void add_data_type(ASTType *data_type)
 	{
 		this->data_type = data_type;
 	}

@@ -1138,8 +1138,8 @@ public:
 		mem = alloc(sizeof(ASTType));
 		type = new(mem) ASTType();
 
-		type->add_type_type(ASTDataType::STRUCT);
-		type->add_type(Struct);
+		type->add_type_type(ASTDataType::POINTER);
+		type->add_type(ptr);
 
 
 
@@ -1515,7 +1515,6 @@ public:
 
 		while (is_token("*"))
 		{
-			puts("parser pointer");
 			consume();
 
 			mem = alloc(sizeof(ASTPointer));
@@ -1527,8 +1526,6 @@ public:
 			type->add_type_type(ASTDataType::POINTER);
 			type->add_type(ptr);
 		}
-
-		printf("type : %d\n",(int)type->type_type);
 
 		return type;
 	}
@@ -1647,7 +1644,7 @@ public:
 					ASTVarDecl *stmt_stmt = parse_vardecl();
 					stmt = new(mem) ASTStatement(stmt_type,stmt_stmt);
 				}
-				else if ( is_token("=",1) or is_token("(",1) or is_token("@",1))
+				else if ( is_token("=",1) or is_token("(",1) or is_token("@",1) or is_token("self"))
 				{
 					ASTStatementType stmt_type = ASTStatementType::EXPR;
 					ASTExpression *stmt_stmt = parse_expr(0);
@@ -2307,7 +2304,7 @@ public:
 
 					if(is_token("("))
 					{
-						void* mem = alloc(sizeof(ASTStructAccessExpr));
+						void* mem = alloc(sizeof(ASTStructMethodCallExpr));
 						ASTStructMethodCallExpr* expr1 = new(mem) ASTStructMethodCallExpr(expr, field);
 
 						expect_symbol("(");

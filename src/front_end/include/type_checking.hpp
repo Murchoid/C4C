@@ -4,6 +4,7 @@
 #include <string>
 #include <map>
 #include "ast.hpp"
+#include "../../utils/include/arena.hpp"
 
 /**
 
@@ -17,29 +18,12 @@ enum class DataType
 */
 
 
-class TypeFunction
-{
-public:
-    DataType return_type;
-    int arg_count;
-
-    TypeFunction(DataType return_type,int arg_count)
-    {
-        this->return_type = return_type;
-        this->arg_count = arg_count;
-    }
-
-    TypeFunction() = default;
-};
 
 class Symbol
 {
 public:
     std::string name;
-    DataType type;
-    TypeFunction val;
-    PointerType ptr_type;
-    AggType agg_type;
+    ASTType *type;
     bool local = false;
     bool global = false;
     bool is_public = false;
@@ -48,38 +32,13 @@ public:
     int int_init = 0;
     long int int64_init = 0;
     bool is_int = true;
-    DataType return_type;
 
 
-    Symbol(std::string name,DataType type,bool local = true)
+    Symbol(std::string name,ASTType *type,bool local = true)
     {
         this->name = name;
         this->type = type;
         this->local = local;
-    }
-
-    void add_pointer_type(bool is_ptr,DataType base_type,int ptr_no)
-    {
-        this->ptr_type.is_ptr = is_ptr;
-        this->ptr_type.base_type = base_type;
-        this->ptr_type.ptr_no = ptr_no;
-    }
-
-
-
-    void add_agg_type(std::string ident)
-    {
-        this->agg_type.set(ident);
-    }
-
-    void add_return_type(DataType return_type)
-    {
-        this->return_type = return_type;
-    }
-
-    void add_val(TypeFunction val)
-    {
-        this->val = val;
     }
 
     void add_global(bool global)
@@ -150,30 +109,9 @@ public:
     }
 
 
-    DataType get_type(std::string name)
+    ASTType *get_type(std::string name)
     {
         return this->table.at(name).type;
-        //return this->map[name].name;
-    }
-
-
-
-    PointerType get_pointer_type(std::string name)
-    {
-        return this->table.at(name).ptr_type;
-        //return this->map[name].name;
-    }
-
-
-    DataType get_return_type(std::string name)
-    {
-        return this->table.at(name).return_type;
-        //return this->map[name].name;
-    }
-
-    TypeFunction get_val(std::string name)
-    {
-        return this->table.at(name).val;
         //return this->map[name].name;
     }
 
@@ -194,13 +132,14 @@ public:
     std::string global_ident;
     int global_counter = 0;
     SymbolTable table;
+	Arena *arena;
 
-    TypeChecking(std::string file_name,ASTProgram *program)
+    TypeChecking(std::string file_name,ASTProgram *program,Arena *arena)
     {
         this->file_name = file_name;
         this->program = program;
+        this->arena = arena;
 
-        return;
         
         SymbolTable *symbol_table = &table;
 
@@ -214,6 +153,19 @@ public:
             check_decl(decl,symbol_table);
         }
     }
+
+
+    /**
+	 * The function uses an arena to allocate memory of
+	 * size `size`.
+	 * The function takes one parameter:
+	 * -size -> the size of memroy to be allocated
+	 */
+
+	void *alloc(int size)
+	{
+		return this->arena->alloc(size);
+	}
 
 
     void check_decl(ASTDeclaration *decl,SymbolTable *symbol_table)
@@ -284,7 +236,7 @@ public:
 
                 if(symbol_table->lookup(decl->ident))
                 {
-                    if(symbol_table->get_type(decl->ident) != DataType::I32)
+                    if(symbol_table->get_type(decl->ident) != ASTDataType::I32)
                     {
                         fatal("function redeclared as a variable");
                     }
@@ -319,7 +271,7 @@ public:
 
                 symbol_table->add(decl->ident,symbol);
 
-                decl->expr->add_data_type(DataType::I32);
+                decl->expr->add_data_type(ASTDataType::I32);
                 break;
             }
             case ASTDataType::I64:
@@ -359,7 +311,7 @@ public:
 
                 if(symbol_table->lookup(decl->ident))
                 {
-                    if(symbol_table->get_type(decl->ident) != DataType::I64)
+                    if(symbol_table->get_type(decl->ident) != ASTDataType::I64)
                     {
                         fatal("function redeclared as a variable");
                     }
@@ -393,7 +345,7 @@ public:
                 }
 
                 symbol_table->add(decl->ident,symbol);
-                decl->expr->add_data_type(DataType::I64);
+                decl->expr->add_data_type(ASTDataType::I64);
                 break;
             }
         }
@@ -412,37 +364,59 @@ public:
         }
     }
 
+
+    bool check_type(ASTType *type)
+    {
+        switch(type->type_type)
+        {
+            case ASTDataType::I8:
+            case ASTDataType::I16:
+            case ASTDataType::I32:
+            case ASTDataType::I64:
+            case ASTDataType::U8:
+            case ASTDataType::U16:
+            case ASTDataType::U32:
+            case ASTDataType::U64:
+            case ASTDataType::CHAR:
+            case ASTDataType::VOID:
+            {
+                return true;
+                break;
+            }
+            case ASTDataType::POINTER:
+            {
+                ASTPointer *ptr = (ASTPointer *)type->type;
+                return check_type(ptr->type);
+                break;
+            }
+            case ASTDataType::STRUCT:
+            {
+                return true;
+                break;
+            }
+        }
+
+        return true;
+    }
+    
+
     void check_function_native(ASTFunctionDeclNative *decl,SymbolTable *symbol_table)
     {
-        DataType return_type;
-        if (decl->return_type->type == ASTDataType::I32)
-        {
-            return_type = DataType::I32;
-        }
-        else if (decl->return_type->type == ASTDataType::I64)
-        {
-            return_type = DataType::I64;
-            //DEBUG_PANIC("correct type : i64  =>  " + decl->ident );
-        }
-        else
+        if (not check_type(decl->return_type))
         {
             fatal(" invalid return type in function " + decl->ident);
         }
 
-
-        TypeFunction f_type(return_type,decl->arguments.size());
 
 
         if (symbol_table->lookup(decl->ident))
         {
             fatal("redeclared function " + decl->ident);
         }
-        
-        Symbol symbol(decl->ident,DataType::FUNCTION);
-        symbol.add_val(f_type);
-        symbol.add_return_type(return_type);
 
-        symbol_table->add(decl->ident,symbol);
+        
+        std::vector<ASTType *> args;
+        
 
         for (ASTFunctionArgument *arg : decl->arguments)
         {
@@ -451,67 +425,43 @@ public:
                 continue;
             }
 
-            DataType arg_datatype;
-            switch (arg->type->type)
+            if(not check_type(arg->type))
             {
-                case ASTDataType::CHAR:
-                {
-                    arg_datatype = DataType::CHAR;
-                    break;
-                }
-                case ASTDataType::I32:
-                {
-                    arg_datatype = DataType::I32;
-                    break;
-                }
-                case ASTDataType::I64:
-                {
-                    arg_datatype = DataType::I64;
-                    break;
-                }
-                default:
-                {
-                    fatal(" unsupported type in function argument ");
-                }
+                fatal(" unsupported type in function argument ");
             }
 
-            symbol_table->add(arg->ident,Symbol(arg->ident,arg_datatype));
-
+            symbol_table->add(arg->ident,Symbol(arg->ident,arg->type));
+            args.push_back(arg->type);
         }
+
+        void *mem = alloc(sizeof(ASTFunction));
+        ASTFunction *f_type = new(mem)ASTFunction(decl->return_type,args);
+
+        mem = alloc(sizeof(ASTType));
+        ASTType *type = new(mem) ASTType();
+
+        type->add_type_type(ASTDataType::FUNCTION);
+        type->add_type(f_type);
+
+        Symbol symbol(decl->ident,type);
+        symbol_table->add(decl->ident,symbol);
     }
 
     void check_function(ASTFunctionDecl *decl,SymbolTable *symbol_table)
     {
-        DataType return_type;
-        if (decl->return_type->type == ASTDataType::I32)
-        {
-            return_type = DataType::I32;
-        }
-        else if (decl->return_type->type == ASTDataType::I64)
-        {
-            return_type = DataType::I64;
-            //DEBUG_PANIC("correct type : i64  =>  " + decl->ident );
-        }
-        else
+        if (not check_type(decl->return_type))
         {
             fatal(" invalid return type in function " + decl->ident);
         }
-
-
-        TypeFunction f_type(return_type,decl->arguments.size());
 
 
         if (symbol_table->lookup(decl->ident))
         {
             fatal("redeclared function " + decl->ident);
         }
-        
-        Symbol symbol(decl->ident,DataType::FUNCTION);
-        symbol.add_val(f_type);
-        symbol.add_global(decl->is_public);
-        symbol.add_return_type(return_type);
 
-        symbol_table->add(decl->ident,symbol);
+        
+        std::vector<ASTType *> args;        
 
         for (ASTFunctionArgument *arg : decl->arguments)
         {
@@ -520,43 +470,37 @@ public:
                 continue;
             }
 
-            DataType arg_datatype;
-            switch (arg->type->type)
+            if(not check_type(arg->type))
             {
-                case ASTDataType::CHAR:
-                {
-                    arg_datatype = DataType::CHAR;
-                    break;
-                }
-                case ASTDataType::I32:
-                {
-                    arg_datatype = DataType::I32;
-                    break;
-                }
-                case ASTDataType::I64:
-                {
-                    arg_datatype = DataType::I64;
-                    break;
-                }
-                default:
-                {
-                    fatal(" unsupported type in function argument $");
-                }
+                fatal(" unsupported type in function argument ");
             }
 
-            symbol_table->add(arg->ident,Symbol(arg->ident,arg_datatype));
-
+            symbol_table->add(arg->ident,Symbol(arg->ident,arg->type));
+            args.push_back(arg->type);
         }
+
+        void *mem = alloc(sizeof(ASTFunction));
+        ASTFunction *f_type = new(mem)ASTFunction(decl->return_type,args);
+
+        mem = alloc(sizeof(ASTType));
+        ASTType *type = new(mem) ASTType();
+
+        type->add_type_type(ASTDataType::FUNCTION);
+        type->add_type(f_type);
+
+        Symbol symbol(decl->ident,type);
+        symbol.add_global(decl->is_public);
+        symbol_table->add(decl->ident,symbol);
 
         if (decl->block != nullptr)
         {
-            check_block_stmt(decl->block,symbol_table,return_type);
+            check_block_stmt(decl->block,symbol_table,decl->return_type);
         }
     }
 
 
 
-    void check_block_stmt(ASTBlockStmt *block,SymbolTable *symbol_table,DataType return_type)
+    void check_block_stmt(ASTBlockStmt *block,SymbolTable *symbol_table,ASTType *return_type)
 	{
 		for (ASTStatement *stmt : block->stmts)
 		{
@@ -564,7 +508,7 @@ public:
 		}
 	}
 
-    void check_stmt(ASTStatement *stmt,SymbolTable *symbol_table,DataType return_type)
+    void check_stmt(ASTStatement *stmt,SymbolTable *symbol_table,ASTType *return_type)
 	{
 		switch(stmt->type)
 		{
@@ -612,73 +556,88 @@ public:
 
     void check_vardecl_stmt(ASTVarDecl *decl,SymbolTable *symbol_table)
     {
-        bool is_ptr = false;
-        DataType base_type;
-        int ptr_no = 0;
-        DataType type;
-        std::string agg_ident;
-
-        switch(decl->type->type)
+        if (not check_type(decl->type))
         {
-            case ASTDataType::I32:
-            {
-                base_type = DataType::I32;
-                DEBUG_PRINT(" vardecl =>  "," i32 ");
-                break;
-            }
-            case ASTDataType::I64:
-            {
-                base_type = DataType::I64;
-                DEBUG_PRINT(" vardecl =>  "," i64 ");
-                break;
-            }
-            case ASTDataType::U32:
-            {
-                base_type = DataType::U32;
-                DEBUG_PRINT(" vardecl =>  "," u32 ");
-                break;
-            }
-            case ASTDataType::U64:
-            {
-                base_type = DataType::U64;
-                DEBUG_PRINT(" vardecl =>  "," u64 ");
-                break;
-            }
-            case ASTDataType::ENUM:
-            {
-                base_type = DataType::ENUM;
-                agg_ident = decl->type->ident;
-                DEBUG_PRINT(" vardecl =>  "," u64 ");
-                break;
-            }
-            case ASTDataType::STRUCT:
-            {
-                base_type = DataType::STRUCT;
-                agg_ident = decl->type->ident;
-                DEBUG_PRINT(" vardecl =>  "," u64 ");
-                break;
-            }
-            default:
-            {
-                DEBUG_PANIC(" the gods have spoken!!");
-                break;
-            }
+            fatal(" invalid type in variable declaration " + decl->ident);
         }
 
+        ASTType *type = decl->type;
 
-
-        if(decl->type->ptr > 0)
+        if (decl->is_extern)
         {
-            type = DataType::PTR;
-            ptr_no = decl->type->ptr;
-            printf(" ptr_no  =>   %d\n",ptr_no);
+            if(decl->init != nullptr)
+            {
+                fatal(" local extern variable declared with an initializer is illegal");
+            }
+
+
+
+            if(symbol_table->lookup(decl->ident))
+            {
+                if(not compare_types(symbol_table->get_type(decl->ident),type))
+                {
+                    fatal("function redeclared as a variable");
+                }
+            }
+            else
+            {
+                Symbol symbol(decl->ident,type);
+                symbol.add_global(true);
+                symbol.add_init(false);
+                symbol_table->add(decl->ident,symbol);
+            }
+        }
+        else if(decl->is_static)
+        {
+            Symbol symbol(decl->ident,type);
+            symbol.add_global(false);
+            symbol.add_init(false);
+
+            if (decl->init == nullptr)
+            {
+                symbol.add_init(true);
+                symbol.add_int_init(0);
+            }/*
+            else if (decl->init->type == ASTExpressionType::I32)
+            {
+                symbol.add_init(true);
+                symbol.add_int_init(get_i32_init(decl->expr->expr));
+            }*/
+            else
+            {
+                fatal(" non-constant initializer used on local static variable");
+            }
+
+            symbol_table->add(decl->ident,symbol);
         }
         else
         {
-            type = base_type;
+            Symbol symbol(decl->ident,type,true);
+            symbol_table->add(decl->ident,symbol);
+
+            if (decl->init != nullptr)
+            {
+                if(decl->init->type == ASTVarInitType::SINGLE)
+                {
+                    check_expr(((ASTVarSingleInit *)decl->init->init)->expr,symbol_table);
+                }
+                else if(decl->init->type == ASTVarInitType::STRUCT)
+                {
+                    ASTVarStructMember map = ((ASTVarStructInit *)decl->init->init)->members;
+                    
+                    for (auto it = map.table.begin(); it != map.table.end(); ++it)
+                    {
+                        check_expr(it->second,symbol_table);
+                    }
+                    
+                }
+            }
         }
 
-        switch (decl->type->type)
+        DEBUG_PRINT(decl->ident,"  in symbol");
+
+        /*
+        switch (decl->type->type_type)
         {
             case ASTDataType::I32:
             {
@@ -693,7 +652,7 @@ public:
 
                     if(symbol_table->lookup(decl->ident))
                     {
-                        if(symbol_table->get_type(decl->ident) != type)
+                        if(not compare_types(symbol_table->get_type(decl->ident),type))
                         {
                             fatal("function redeclared as a variable");
                         }
@@ -703,8 +662,6 @@ public:
                         Symbol symbol(decl->ident,type);
                         symbol.add_global(true);
                         symbol.add_init(false);
-                        symbol.add_pointer_type(is_ptr,base_type,ptr_no);
-                        symbol.add_agg_type(agg_ident);
                         symbol_table->add(decl->ident,symbol);
                     }
                 }
@@ -713,7 +670,6 @@ public:
                     Symbol symbol(decl->ident,type);
                     symbol.add_global(false);
                     symbol.add_init(false);
-                    symbol.add_pointer_type(is_ptr,base_type,ptr_no);
 
                     if (decl->init == nullptr)
                     {
@@ -724,7 +680,7 @@ public:
                     {
                         symbol.add_init(true);
                         symbol.add_int_init(get_i32_init(decl->expr->expr));
-                    }*/
+                    }
                     else
                     {
                         fatal(" non-constant initializer used on local static variable");
@@ -735,8 +691,6 @@ public:
                 else
                 {
                     Symbol symbol(decl->ident,type,true);
-                    symbol.add_pointer_type(is_ptr,base_type,ptr_no);
-                    symbol.add_agg_type(agg_ident);
                     symbol_table->add(decl->ident,symbol);
 
                     if (decl->init != nullptr)
@@ -770,14 +724,14 @@ public:
 
                     if(symbol_table->lookup(decl->ident))
                     {
-                        if(symbol_table->get_type(decl->ident) != DataType::I64)
+                        if(not compare_types(symbol_table->get_type(decl->ident),type))
                         {
                             fatal("function redeclared as a variable");
                         }
                     }
                     else
                     {
-                        Symbol symbol(decl->ident,DataType::I64);
+                        Symbol symbol(decl->ident,type);
                         symbol.add_global(true);
                         symbol.add_init(false);
                         symbol_table->add(decl->ident,symbol);
@@ -785,7 +739,7 @@ public:
                 }
                 else if(decl->is_static)
                 {
-                    Symbol symbol(decl->ident,DataType::I64);
+                    Symbol symbol(decl->ident,type);
                     symbol.add_global(false);
                     symbol.add_init(false);
 
@@ -798,7 +752,7 @@ public:
                     {
                         symbol.add_init(true);
                         symbol.add_int_init(get_i32_init(decl->expr->expr));
-                    }*/
+                    }
                     else
                     {
                         fatal(" non-constant initializer used on local static variable");
@@ -809,7 +763,7 @@ public:
 
                 else
                 {
-                    symbol_table->add(decl->ident,Symbol(decl->ident,DataType::I64,true));
+                    symbol_table->add(decl->ident,Symbol(decl->ident,type,true));
 
                     if (decl->init != nullptr)
                     {
@@ -842,14 +796,14 @@ public:
 
                     if(symbol_table->lookup(decl->ident))
                     {
-                        if(symbol_table->get_type(decl->ident) != DataType::U32)
+                        if(not compare_types(symbol_table->get_type(decl->ident),type))
                         {
                             fatal("function redeclared as a variable");
                         }
                     }
                     else
                     {
-                        Symbol symbol(decl->ident,DataType::U32);
+                        Symbol symbol(decl->ident,type);
                         symbol.add_global(true);
                         symbol.add_init(false);
                         symbol_table->add(decl->ident,symbol);
@@ -857,7 +811,7 @@ public:
                 }
                 else if(decl->is_static)
                 {
-                    Symbol symbol(decl->ident,DataType::U32);
+                    Symbol symbol(decl->ident,type);
                     symbol.add_global(false);
                     symbol.add_init(false);
 
@@ -874,14 +828,14 @@ public:
                     else
                     {
                         fatal(" non-constant initializer used on local static variable");
-                    }*/
+                    }
 
                     symbol_table->add(decl->ident,symbol);
                 }
 
                 else
                 {
-                    symbol_table->add(decl->ident,Symbol(decl->ident,DataType::U32,true));
+                    symbol_table->add(decl->ident,Symbol(decl->ident,type,true));
 
                     if (decl->init != nullptr)
                     {
@@ -914,14 +868,14 @@ public:
 
                     if(symbol_table->lookup(decl->ident))
                     {
-                        if(symbol_table->get_type(decl->ident) != DataType::U64)
+                        if(not compare_types(symbol_table->get_type(decl->ident),type))
                         {
                             fatal("function redeclared as a variable");
                         }
                     }
                     else
                     {
-                        Symbol symbol(decl->ident,DataType::U64);
+                        Symbol symbol(decl->ident,type);
                         symbol.add_global(true);
                         symbol.add_init(false);
                         symbol_table->add(decl->ident,symbol);
@@ -929,7 +883,7 @@ public:
                 }
                 else if(decl->is_static)
                 {
-                    Symbol symbol(decl->ident,DataType::U64);
+                    Symbol symbol(decl->ident,type);
                     symbol.add_global(false);
                     symbol.add_init(false);
 
@@ -942,7 +896,7 @@ public:
                     {
                         symbol.add_init(true);
                         symbol.add_int_init(get_i32_init(decl->expr->expr));
-                    }*/
+                    }
                     else
                     {
                         fatal(" non-constant initializer used on local static variable");
@@ -953,7 +907,7 @@ public:
 
                 else
                 {
-                    symbol_table->add(decl->ident,Symbol(decl->ident,DataType::U64,true));
+                    symbol_table->add(decl->ident,Symbol(decl->ident,type,true));
 
                     if (decl->init != nullptr)
                     {
@@ -989,11 +943,13 @@ public:
                 break;
             }
         }
+
+        */
     }
 
 
 
-    void check_while_stmt(ASTWhileStmt *stmt,SymbolTable *symbol_table,DataType return_type)
+    void check_while_stmt(ASTWhileStmt *stmt,SymbolTable *symbol_table,ASTType *return_type)
     {
         check_expr(stmt->expr,symbol_table);
         check_block_stmt(stmt->block,symbol_table,return_type);
@@ -1001,7 +957,7 @@ public:
 
     
 
-    void check_if_stmt(ASTIfStmt *stmt,SymbolTable *symbol_table,DataType return_type)
+    void check_if_stmt(ASTIfStmt *stmt,SymbolTable *symbol_table,ASTType *return_type)
     {
         check_expr(stmt->expr,symbol_table);
         check_block_stmt(stmt->block,symbol_table,return_type);
@@ -1024,17 +980,67 @@ public:
         }
     }
 
+    bool compare_types(ASTType *type1,ASTType *type2)
+    {
+        if(type1->type_type != type2->type_type)
+        {
+            return false;
+        }
+
+        switch(type1->type_type)
+        {
+            case ASTDataType::I8:
+            case ASTDataType::I16:
+            case ASTDataType::I32:
+            case ASTDataType::I64:
+            case ASTDataType::U8:
+            case ASTDataType::U16:
+            case ASTDataType::U32:
+            case ASTDataType::U64:
+            case ASTDataType::CHAR:
+            case ASTDataType::VOID:
+            {
+                return true;
+                break;
+            }
+            case ASTDataType::POINTER:
+            {
+                ASTPointer *ptr1 = (ASTPointer *)type1->type;
+                ASTPointer *ptr2 = (ASTPointer *)type2->type;
+                return compare_types(ptr1->type,ptr2->type);
+                break;
+            }
+            case ASTDataType::STRUCT:
+            {
+                return true;
+                break;
+            }
+        }
+
+        return true;
+    }
 
 
-    void check_return_stmt(ASTReturnStmt *stmt,SymbolTable *symbol_table,DataType return_type)
+
+    void check_return_stmt(ASTReturnStmt *stmt,SymbolTable *symbol_table,ASTType *return_type)
     {
         check_expr(stmt->expr,symbol_table);
 
-        if(stmt->expr->data_type != return_type)
+        if(not compare_types(stmt->expr->data_type,return_type))
         {
-            std::cout << "  return type  "  << (int)return_type  << "  : stmt->expr->data_type  "  << (int)stmt->expr->data_type << std::endl;
+            return;
+            //std::cout << "  return type  "  << (int)return_type  << "  : stmt->expr->data_type  "  << (int)stmt->expr->data_type << std::endl;
             fatal("returned value data type conflicts with the function's data type");
         }
+    }
+
+    ASTType *build_builtin(ASTDataType type_type)
+    {
+        void *mem = alloc(sizeof(ASTType));
+        ASTType *type = new(mem) ASTType();
+        type->add_type_type(type_type);
+
+        return type;
     }
 
     void check_expr(ASTExpression *expr,SymbolTable *symbol_table)
@@ -1044,28 +1050,28 @@ public:
             case ASTExpressionType::I32:
             {
                 ASTI32Expr *i32_expr = (ASTI32Expr *)expr->expr;
-                i32_expr->add_data_type(DataType::I32);
+                i32_expr->add_data_type(build_builtin(ASTDataType::I32));
                 expr->add_data_type(i32_expr->data_type);
                 break;
             }
             case ASTExpressionType::I64:
             {
                 ASTI64Expr *i64_expr = (ASTI64Expr *)expr->expr;
-                i64_expr->add_data_type(DataType::I64);
+                i64_expr->add_data_type(build_builtin(ASTDataType::I64));
                 expr->add_data_type(i64_expr->data_type);
                 break;
             }
             case ASTExpressionType::U32:
             {
                 ASTU32Expr *u32_expr = (ASTU32Expr *)expr->expr;
-                u32_expr->add_data_type(DataType::U32);
+                u32_expr->add_data_type(build_builtin(ASTDataType::U32));
                 expr->add_data_type(u32_expr->data_type);
                 break;
             }
             case ASTExpressionType::U64:
             {
                 ASTU64Expr *u64_expr = (ASTU64Expr *)expr->expr;
-                u64_expr->add_data_type(DataType::U64);
+                u64_expr->add_data_type(build_builtin(ASTDataType::U64));
                 expr->add_data_type(u64_expr->data_type);
                 break;
             }
@@ -1078,24 +1084,24 @@ public:
                 {
                     case ASTDataType::I32:
                     {
-                        cast_expr->add_data_type(DataType::I32);
+                        cast_expr->add_data_type(build_builtin(ASTDataType::I32));
                         break;
                     }
                     case ASTDataType::I64:
                     {
                         DEBUG_PANIC("the fuckery");
-                        cast_expr->add_data_type(DataType::I64);
+                        cast_expr->add_data_type(build_builtin(ASTDataType::I64));
                         break;
                     }
                     case ASTDataType::U32:
                     {
-                        cast_expr->add_data_type(DataType::U32);
+                        cast_expr->add_data_type(build_builtin(ASTDataType::U32));
                         break;
                     }
                     case ASTDataType::U64:
                     {
                         DEBUG_PANIC("the fuckery");
-                        cast_expr->add_data_type(DataType::U64);
+                        cast_expr->add_data_type(build_builtin(ASTDataType::U64));
                         break;
                     }
                     default:
@@ -1115,62 +1121,62 @@ public:
                 check_expr(assign_expr->lhs,symbol_table);
                 check_expr(assign_expr->rhs,symbol_table);
 
-                switch (assign_expr->lhs->data_type)
+                switch (assign_expr->lhs->data_type->type_type)
                 {
-                    case DataType::I32:
+                    case ASTDataType::I32:
                     {
-                        if(assign_expr->rhs->data_type == DataType::I64)
+                        if(assign_expr->rhs->data_type->type_type == ASTDataType::I64)
                         {
                             fatal(" i64 used with an i32 => perform cast for this to compile");
                         }
-                        else if(assign_expr->rhs->data_type == DataType::U64)
+                        else if(assign_expr->rhs->data_type->type_type == ASTDataType::U64)
                         {
                             fatal(" u64 used with an i32 => perform cast for this to compile");
                         }
-                        if(assign_expr->rhs->data_type == DataType::U32)
+                        if(assign_expr->rhs->data_type->type_type == ASTDataType::U32)
                         {
                             fatal(" u32 used with an i32 => perform cast for this to compile");
                         }
                         else
                         {
-                            assign_expr->add_data_type(DataType::I32);
+                            assign_expr->add_data_type(build_builtin(ASTDataType::I32));
                         }
                         break;
                     }
-                    case DataType::I64:
+                    case ASTDataType::I64:
                     {
-                        if(assign_expr->rhs->data_type == DataType::I32)
+                        if(assign_expr->rhs->data_type->type_type == ASTDataType::I32)
                         {
                             if(assign_expr->rhs->type == ASTExpressionType::I32)
                             {
                                 assign_expr->rhs->type = ASTExpressionType::I64;
                                 ASTI32Expr *i32_expr = (ASTI32Expr *)assign_expr->rhs->expr;
-                                i32_expr->add_data_type(DataType::I64);
-                                assign_expr->rhs->add_data_type(DataType::I64);
-                                assign_expr->add_data_type(DataType::I64);
+                                i32_expr->add_data_type(build_builtin(ASTDataType::I64));
+                                assign_expr->rhs->add_data_type(build_builtin(ASTDataType::I64));
+                                assign_expr->add_data_type(build_builtin(ASTDataType::I64));
                             }
                             else
                             {
                                 fatal(" i32 used with an i64 => perform cast for this to compile");
                             }
                         }
-                        else if(assign_expr->rhs->data_type == DataType::U32)
+                        else if(assign_expr->rhs->data_type->type_type == ASTDataType::U32)
                         {
                             fatal(" u32 used with an i64 => perform cast for this to compile");
                         }
-                        else if(assign_expr->rhs->data_type == DataType::U64)
+                        else if(assign_expr->rhs->data_type->type_type == ASTDataType::U64)
                         {
                             fatal(" u64 used with an i64 => perform cast for this to compile");
                         }
                         else
                         {
-                            assign_expr->add_data_type(DataType::I64);
+                            assign_expr->add_data_type(build_builtin(ASTDataType::I64));
                         }
                         break;
                     }
-                    case DataType::U32:
+                    case ASTDataType::U32:
                     {
-                        if(assign_expr->rhs->data_type == DataType::I64)
+                        if(assign_expr->rhs->data_type->type_type == ASTDataType::I64)
                         {
                             if(assign_expr->rhs->type == ASTExpressionType::I64)
                             {
@@ -1179,9 +1185,9 @@ public:
                                 
                                 if(i64_expr->value >= 0 && i64_expr->value <= (std::pow(2,32)))
                                 {
-                                    i64_expr->add_data_type(DataType::U32);
-                                    assign_expr->rhs->add_data_type(DataType::U32);
-                                    assign_expr->add_data_type(DataType::U32);
+                                    i64_expr->add_data_type(build_builtin(ASTDataType::U32));
+                                    assign_expr->rhs->add_data_type(build_builtin(ASTDataType::U32));
+                                    assign_expr->add_data_type(build_builtin(ASTDataType::U32));
                                 }
                                 else
                                 {
@@ -1194,11 +1200,11 @@ public:
                             }
                             
                         }
-                        else if(assign_expr->rhs->data_type == DataType::U64)
+                        else if(assign_expr->rhs->data_type->type_type == ASTDataType::U64)
                         {
                             fatal(" u64 used with an u32 => perform cast for this to compile");
                         }
-                        else if(assign_expr->rhs->data_type == DataType::I32)
+                        else if(assign_expr->rhs->data_type->type_type == ASTDataType::I32)
                         {
                             if(assign_expr->rhs->type == ASTExpressionType::I32)
                             {
@@ -1207,9 +1213,9 @@ public:
                                 
                                 if(i32_expr->value >= 0)
                                 {
-                                    i32_expr->add_data_type(DataType::U32);
-                                    assign_expr->rhs->add_data_type(DataType::U32);
-                                    assign_expr->add_data_type(DataType::U32);
+                                    i32_expr->add_data_type(build_builtin(ASTDataType::U32));
+                                    assign_expr->rhs->add_data_type(build_builtin(ASTDataType::U32));
+                                    assign_expr->add_data_type(build_builtin(ASTDataType::U32));
                                 }
                                 else
                                 {
@@ -1223,13 +1229,13 @@ public:
                         }
                         else
                         {
-                            assign_expr->add_data_type(DataType::U32);
+                            assign_expr->add_data_type(build_builtin(ASTDataType::U32));
                         }
                         break;
                     }
-                    case DataType::U64:
+                    case ASTDataType::U64:
                     {
-                        if(assign_expr->rhs->data_type == DataType::I32)
+                        if(assign_expr->rhs->data_type->type_type == ASTDataType::I32)
                         {
                             if(assign_expr->rhs->type == ASTExpressionType::I32)
                             {
@@ -1238,9 +1244,9 @@ public:
                                 
                                 if(i32_expr->value >= 0)
                                 {
-                                    i32_expr->add_data_type(DataType::U64);
-                                    assign_expr->rhs->add_data_type(DataType::U64);
-                                    assign_expr->add_data_type(DataType::U64);
+                                    i32_expr->add_data_type(build_builtin(ASTDataType::U64));
+                                    assign_expr->rhs->add_data_type(build_builtin(ASTDataType::U64));
+                                    assign_expr->add_data_type(build_builtin(ASTDataType::U64));
                                 }
                                 else
                                 {
@@ -1252,7 +1258,7 @@ public:
                                 fatal(" i32 used with an u64 => perform cast for this to compile");
                             }
                         }
-                        else if(assign_expr->rhs->data_type == DataType::I64)
+                        else if(assign_expr->rhs->data_type->type_type == ASTDataType::I64)
                         {
                             if(assign_expr->rhs->type == ASTExpressionType::I64)
                             {
@@ -1261,9 +1267,9 @@ public:
                                 
                                 if(i64_expr->value >= 0)
                                 {
-                                    i64_expr->add_data_type(DataType::U64);
-                                    assign_expr->rhs->add_data_type(DataType::U64);
-                                    assign_expr->add_data_type(DataType::U64);
+                                    i64_expr->add_data_type(build_builtin(ASTDataType::U64));
+                                    assign_expr->rhs->add_data_type(build_builtin(ASTDataType::U64));
+                                    assign_expr->add_data_type(build_builtin(ASTDataType::U64));
                                 }
                                 else
                                 {
@@ -1277,13 +1283,13 @@ public:
                         }
                         else
                         {
-                            assign_expr->add_data_type(DataType::U64);
+                            assign_expr->add_data_type(build_builtin(ASTDataType::U64));
                         }
                         break;
                     }
                     default:
                     {
-                        fatal("unsupported datatype encountered : assign");
+                        fatal("unsupported ASTType *encountered : assign");
                         break;
                     }
                 }
@@ -1305,12 +1311,30 @@ public:
                 
 
                 var_expr->add_data_type(symbol_table->get_type(name));
-                var_expr->add_pointer_type(symbol_table->get_pointer_type(name).is_ptr,symbol_table->get_pointer_type(name).base_type,symbol_table->get_pointer_type(name).ptr_no);
-
-                printf("var expr ptr_no [%s] : %d\n",name.c_str(),symbol_table->get_pointer_type(name).ptr_no);
-
                 expr->add_data_type(var_expr->data_type);
-                expr->add_pointer_type(symbol_table->get_pointer_type(name).is_ptr,symbol_table->get_pointer_type(name).base_type,symbol_table->get_pointer_type(name).ptr_no);
+                break;
+            }
+            case ASTExpressionType::STRUCT_METHOD_CALL:
+            {
+                ASTStructMethodCallExpr *Struct = (ASTStructMethodCallExpr *)expr->expr;
+                check_expr(Struct->base,symbol_table);
+
+                if(Struct->base->type != ASTExpressionType::VARIABLE)
+                {
+                    //fatal("expected identifier in method call");
+                }
+
+                std::string name = ((ASTVariableExpr *)Struct->base->expr)->ident;
+                std::cout << "name >>>>>>>>    " << name <<std::endl;
+                if (symbol_table->lookup(name) and not is_data_type(symbol_table->get_type(name)) )
+                {
+                    fatal("function used as variable");    
+                }
+
+                Struct->add_data_type(symbol_table->get_type(name));
+                Struct->prefix = ((ASTStruct *)Struct->data_type->type)->ident;
+                expr->add_data_type(Struct->data_type);
+
                 break;
             }
             case ASTExpressionType::ADDRESS_OF:
@@ -1319,21 +1343,17 @@ public:
                 if(is_lvalue(addr->expr))
                 {
                     check_expr(addr->expr,symbol_table);
-                    addr->add_data_type(DataType::PTR);
 
+                    void *mem = alloc(sizeof(ASTPointer));
+                    ASTPointer *ptr = new(mem) ASTPointer(addr->expr->data_type);
 
-                    if(addr->expr->ptr_type.is_ptr)
-                    {
-                        addr->add_pointer_type(true,addr->expr->ptr_type.base_type,addr->expr->ptr_type.ptr_no + 1);
-                    }
-                    else
-                    {
-                        addr->add_pointer_type(true,addr->expr->data_type,1);
-                    }
+                    mem = alloc(sizeof(ASTType));
+                    ASTType *type = new(mem)ASTType();
+                    type->add_type_type(ASTDataType::POINTER);
+                    type->add_type(ptr);
 
-
+                    addr->add_data_type(type);
                     expr->add_data_type(addr->data_type);
-                    expr->add_pointer_type(addr->ptr_type.is_ptr,addr->ptr_type.base_type,addr->ptr_type.ptr_no);
                 }
                 else
                 {
@@ -1346,37 +1366,13 @@ public:
                 ASTPtrReadExpr *read = (ASTPtrReadExpr *)expr->expr;
                 check_expr(read->expr,symbol_table);
 
-                switch (read->expr->data_type)
+                if(read->expr->data_type->type_type != ASTDataType::POINTER)
                 {
-                    case DataType::PTR:
-                    {
-                        DEBUG_PRINT("pointer read","--------------------");
-                        if(read->expr->ptr_type.ptr_no > 1)
-                        {
-                            //fatal("double pointer");
-                            read->add_data_type(DataType::PTR);
-                            read->add_pointer_type(read->expr->ptr_type.is_ptr,read->expr->ptr_type.base_type,read->expr->ptr_type.ptr_no);
-                        }
-                        else
-                        {
-                            read->add_data_type(read->expr->ptr_type.base_type);
-                            read->add_pointer_type(false,read->expr->ptr_type.base_type,0);
-                        }
-                        break;
-                    }
-                    default:
-                    {
-                        fatal("trying to read from a non-pointer type is invalid");
-                        break;
-                    }
+                    fatal("trying to read from a non-pointer type is invalid");
                 }
 
+                read->add_data_type((ASTType *)read->expr->data_type->type);
                 expr->add_data_type(read->data_type);
-                expr->add_pointer_type(read->ptr_type.is_ptr,read->ptr_type.base_type,read->ptr_type.ptr_no);
-
-                std::cout << " read ptr : " << (int)expr->data_type << std::endl;
-
-
 
                 break;
             }
@@ -1385,37 +1381,13 @@ public:
                 ASTPtrWriteExpr *write = (ASTPtrWriteExpr *)expr->expr;
                 check_expr(write->expr,symbol_table);
 
-                switch (write->expr->data_type)
+                if(write->expr->data_type->type_type != ASTDataType::POINTER)
                 {
-                    case DataType::PTR:
-                    {
-                        DEBUG_PRINT("pointer read","--------------------");
-                        if(write->expr->ptr_type.ptr_no > 1)
-                        {
-                            //fatal("double pointer 66");
-                            write->add_data_type(DataType::PTR);
-                            write->add_pointer_type(write->expr->ptr_type.is_ptr,write->expr->ptr_type.base_type,write->expr->ptr_type.ptr_no -1);
-                        }
-                        else
-                        {
-                            write->add_data_type(write->expr->ptr_type.base_type);
-                            write->add_pointer_type(false,write->expr->ptr_type.base_type,0);
-                        }
-                        break;
-                    }
-                    default:
-                    {
-                        fatal("trying to read from a non-pointer type is invalid");
-                        break;
-                    }
+                    fatal("trying to read from a non-pointer type is invalid");
                 }
 
+                write->add_data_type((ASTType *)write->expr->data_type->type);
                 expr->add_data_type(write->data_type);
-                expr->add_pointer_type(write->ptr_type.is_ptr,write->ptr_type.base_type,write->ptr_type.ptr_no);
-
-                std::cout << " write ptr : " << (int)expr->data_type << std::endl;
-
-
                 break;
             }
             case ASTExpressionType::FUNCTION_CALL:
@@ -1430,36 +1402,32 @@ public:
                 {
                     name = ((ASTVariableExpr *)fn_expr->base)->ident;
                 }
-                else if(fn_expr->base->type == ASTExpressionType::STRUCT_ACCESS)
+                else
                 {
-                    //check_expr(fn_expr->base,symbol_table);
-                    name = ((ASTStructAccessExpr *)fn_expr->base)->member;
-                }
-                else if(fn_expr->base->type == ASTExpressionType::STRUCT_PTR_ACCESS)
-                {
-                    //check_expr(fn_expr->base,symbol_table);
-                    name = ((ASTStructPtrAccessExpr *)fn_expr->base)->member;
+                    fatal("expected identifier as function name");
                 }
 
-                std::cout << "name : " << name << std::endl;
 
-                DataType t_type = symbol_table->get_type(name);
-                TypeFunction f_type = symbol_table->get_val(name);
-                fn_expr->add_data_type(f_type.return_type);
-                expr->add_data_type(f_type.return_type);
+                ASTType *type = symbol_table->get_type(name);
 
-                std::cout << "t_type   :  " << (int)t_type << std::endl;
-
-                if (t_type == DataType::I32 or t_type == DataType::I64)
+                if(type->type_type != ASTDataType::FUNCTION)
                 {
                     fatal(" variable used as function name ");
                 }
 
-                if (f_type.arg_count != fn_expr->args.size())
+                ASTFunction *f_type = (ASTFunction *)type->type;
+                ASTType *return_type = (ASTType *)f_type->return_type;
+
+                fn_expr->add_data_type(return_type);
+                expr->add_data_type(return_type);
+
+
+                if (f_type->args.size() != fn_expr->args.size())
                 {
                     fatal(" function call with invalid number of arguments");
                 }
 
+                int i = 0;
 
                 for (ASTExpression *arg : fn_expr->args)
                 {
@@ -1469,6 +1437,10 @@ public:
                     }
 
                     check_expr(arg,symbol_table);
+                    if(not compare_types(arg->data_type,f_type->args[i++]))
+                    {
+                        fatal("unmatching types in function call");
+                    }
                 }
 
                 break;
@@ -1483,7 +1455,7 @@ public:
                 {
                     case ASTUnaryOperator::COMPLEMENT:
                     {
-                        unary_expr->add_data_type(DataType::I32);
+                        unary_expr->add_data_type(build_builtin(ASTDataType::I32));
                         break;
                     }
                     default:
@@ -1509,7 +1481,7 @@ public:
                     case ASTBinaryOperator::AND:
                     case ASTBinaryOperator::OR:
                     {
-                        binary_expr->add_data_type(DataType::I32);
+                        binary_expr->add_data_type(build_builtin(ASTDataType::I32));
                         break;
                     }
                     default:
@@ -1522,31 +1494,31 @@ public:
                             case ASTBinaryOperator::DIV:
                             case ASTBinaryOperator::MOD:
                             {
-                                switch (binary_expr->lhs->data_type)
+                                switch (binary_expr->lhs->data_type->type_type)
                                 {
-                                    case DataType::I32:
+                                    case ASTDataType::I32:
                                     {
-                                        if(binary_expr->rhs->data_type == DataType::I64)
+                                        if(binary_expr->rhs->data_type->type_type == ASTDataType::I64)
                                         {
                                             fatal(" i64 used with an i32 => perform cast for this to compile");
                                         }
                                         else
                                         {
-                                            binary_expr->add_data_type(DataType::I32);
+                                            binary_expr->add_data_type(build_builtin(ASTDataType::I32));
                                         }
                                         break;
                                     }
-                                    case DataType::I64:
+                                    case ASTDataType::I64:
                                     {
-                                        if(binary_expr->rhs->data_type == DataType::I32)
+                                        if(binary_expr->rhs->data_type->type_type == ASTDataType::I32)
                                         {
                                             if(binary_expr->rhs->type == ASTExpressionType::I32)
                                             {
                                                 binary_expr->rhs->type = ASTExpressionType::I64;
                                                 ASTI32Expr *i32_expr = (ASTI32Expr *)binary_expr->rhs->expr;
-                                                i32_expr->add_data_type(DataType::I64);
-                                                binary_expr->rhs->add_data_type(DataType::I64);
-                                                binary_expr->add_data_type(DataType::I64);
+                                                i32_expr->add_data_type(build_builtin(ASTDataType::I64));
+                                                binary_expr->rhs->add_data_type(build_builtin(ASTDataType::I64));
+                                                binary_expr->add_data_type(build_builtin(ASTDataType::I64));
                                             }
                                             else
                                             {
@@ -1555,13 +1527,13 @@ public:
                                         }
                                         else
                                         {
-                                            binary_expr->add_data_type(DataType::I64);
+                                            binary_expr->add_data_type(build_builtin(ASTDataType::I64));
                                         }
                                         break;
                                     }
-                                    case DataType::U32:
+                                    case ASTDataType::U32:
                                     {
-                                        if(binary_expr->rhs->data_type == DataType::I32)
+                                        if(binary_expr->rhs->data_type->type_type == ASTDataType::I32)
                                         {
                                             if(binary_expr->rhs->type == ASTExpressionType::I32)
                                             {
@@ -1570,9 +1542,9 @@ public:
 
                                                 if(i32_expr->value >= 0)
                                                 {
-                                                    i32_expr->add_data_type(DataType::U32);
-                                                    binary_expr->rhs->add_data_type(DataType::U32);
-                                                    binary_expr->add_data_type(DataType::U32);
+                                                    i32_expr->add_data_type(build_builtin(ASTDataType::U32));
+                                                    binary_expr->rhs->add_data_type(build_builtin(ASTDataType::U32));
+                                                    binary_expr->add_data_type(build_builtin(ASTDataType::U32));
                                                 }
                                                 else
                                                 {
@@ -1586,13 +1558,13 @@ public:
                                         }
                                         else
                                         {
-                                            binary_expr->add_data_type(DataType::I64);
+                                            binary_expr->add_data_type(build_builtin(ASTDataType::I64));
                                         }
                                         break;
                                     }
-                                    case DataType::U64:
+                                    case ASTDataType::U64:
                                     {
-                                        if(binary_expr->rhs->data_type == DataType::I32)
+                                        if(binary_expr->rhs->data_type->type_type == ASTDataType::I32)
                                         {
                                             if(binary_expr->rhs->type == ASTExpressionType::I32)
                                             {
@@ -1601,9 +1573,9 @@ public:
                                                 
                                                 if(i32_expr->value >= 0)
                                                 {
-                                                    i32_expr->add_data_type(DataType::U64);
-                                                    binary_expr->rhs->add_data_type(DataType::U64);
-                                                    binary_expr->add_data_type(DataType::U64);
+                                                    i32_expr->add_data_type(build_builtin(ASTDataType::U64));
+                                                    binary_expr->rhs->add_data_type(build_builtin(ASTDataType::U64));
+                                                    binary_expr->add_data_type(build_builtin(ASTDataType::U64));
                                                 }
                                                 else
                                                 {
@@ -1615,7 +1587,7 @@ public:
                                                 fatal(" i32 used with an u64 => perform cast for this to compile");
                                             }
                                         }
-                                        else if(binary_expr->rhs->data_type == DataType::I64)
+                                        else if(binary_expr->rhs->data_type->type_type == ASTDataType::I64)
                                         {
                                             if(binary_expr->rhs->type == ASTExpressionType::I64)
                                             {
@@ -1624,9 +1596,9 @@ public:
                                                 
                                                 if(i64_expr->value >= 0)
                                                 {
-                                                    i64_expr->add_data_type(DataType::U64);
-                                                    binary_expr->rhs->add_data_type(DataType::U64);
-                                                    binary_expr->add_data_type(DataType::U64);
+                                                    i64_expr->add_data_type(build_builtin(ASTDataType::U64));
+                                                    binary_expr->rhs->add_data_type(build_builtin(ASTDataType::U64));
+                                                    binary_expr->add_data_type(build_builtin(ASTDataType::U64));
                                                 }
                                                 else
                                                 {
@@ -1640,14 +1612,14 @@ public:
                                         }
                                         else
                                         {
-                                            binary_expr->add_data_type(DataType::U64);
+                                            binary_expr->add_data_type(build_builtin(ASTDataType::U64));
                                         }
                                         break;
                                     }
                                     default:
                                     {
-                                        std::cout << "   TYPE   :  "  << (int)binary_expr->lhs->data_type << std::endl;
-                                        fatal("binary expr case : unsupported datatype encountered");
+                                        //std::cout << "   TYPE   :  "  << (int)binary_expr->lhs->data_type << std::endl;
+                                        fatal("binary expr case : unsupported ASTType *encountered");
                                         break;
                                     }
                                 }
@@ -1659,11 +1631,11 @@ public:
                                 {
                                     case ASTBinaryOperator::EQUAL:
                                     {
-                                        check_pointer_type_match(binary_expr->lhs,binary_expr->rhs);
+                                        compare_types(binary_expr->lhs->data_type,binary_expr->rhs->data_type);
                                         break;
                                     }
                                 }
-                                binary_expr->add_data_type(DataType::I32);
+                                binary_expr->add_data_type(build_builtin(ASTDataType::I32));
                             }
                         }
                         break;
@@ -1676,54 +1648,29 @@ public:
         }
     }
 
-    void check_pointer_type_match(ASTExpression *lhs,ASTExpression *rhs)
-    {
-        if(lhs->data_type == DataType::PTR)
-        {
-            if(rhs->data_type != DataType::PTR)
-            {
-                fatal("comparing a pointer witho a non pointer is invalid");
-            }
-            else
-            {
-                if((lhs->ptr_type.base_type != rhs->ptr_type.base_type) or (lhs->ptr_type.ptr_no != rhs->ptr_type.ptr_no))
-                {
-                    fatal("pointer comparisons between conflicting types is invalid");
-                }
-            }
-        }
-        else if(rhs->data_type == DataType::PTR)
-        {
-            if(lhs->data_type != DataType::PTR)
-            {
-                fatal("comparing a pointer witho a non pointer is invalid");
-            }
-            else
-            {
-                if((lhs->ptr_type.base_type != rhs->ptr_type.base_type) or (lhs->ptr_type.ptr_no != rhs->ptr_type.ptr_no))
-                {
-                    fatal("pointer comparisons between conflicting types is invalid");
-                }
-            }
-        }
-    }
 
-    bool is_data_type(DataType type)
+    bool is_data_type(ASTType *type)
     {
-        switch(type)
+        switch(type->type_type)
         {
-            case DataType::I32:
-            case DataType::U32:
-            case DataType::I64:
-            case DataType::U64:
-            case DataType::PTR:
+            case ASTDataType::I8:
+            case ASTDataType::I16:
+            case ASTDataType::I32:
+            case ASTDataType::I64:
+            case ASTDataType::U8:
+            case ASTDataType::U16:
+            case ASTDataType::U32:
+            case ASTDataType::U64:
+            case ASTDataType::CHAR:
+            case ASTDataType::VOID:
+            case ASTDataType::POINTER:
+            case ASTDataType::STRUCT:
             {
                 return true;
             }
             default:
             {
                 return false;
-                break;
             }
         }
     }

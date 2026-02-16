@@ -5,28 +5,45 @@
 #include <map>
 #include "ast.hpp"
 
+/*
 
-enum class DataType
+enum class DataTypeType
 {
     FUNCTION = 1,
     CHAR,
+    VOID,
+    I8,
+    I16,
     I32,
     I64,
+    U8,
+    U16,
     U32,
     U64,
     F32,
     F64,
-    PTR,
+    POINTER,
     ENUM,
     STRUCT,
+    UNION,
 };
 
 
-class AggType
+class DataType
+{
+public:
+    DataTypeType type_type;
+    void *type;
+
+
+};
+
+
+class StructType
 {
 public:
     std::string ident;
-    void set(std::string ident)
+    void StructType(std::string ident)
     {
         this->ident;
     }
@@ -36,10 +53,7 @@ public:
 class PointerType
 {
 public:
-    bool is_ptr = false;
-    DataType base_type;
-    int ptr_no = 0;
-    //bool is_set = false;
+    
 
     void set(bool is_ptr,DataType base_type,int ptr_no)
     {
@@ -49,6 +63,8 @@ public:
         //this->is_set = true;
     }
 };
+
+*/
 
 
 #endif

@@ -658,183 +658,210 @@ typedef void * void_ptr;
 	}
 
 
-	std::string convert_expr(ASTExpression *expr,bool write = true,std::string dot = ".")
+	void convert_expr(ASTExpression *expr,bool write = true)
 	{
 		switch (expr->type)
 		{
 			case ASTExpressionType::CAST:
 			{
-				convert_cast_expr(expr->expr,expr->data_type,write);
+				convert_cast_expr(expr->expr);
 				break;
 			}
 			case ASTExpressionType::STRING:
 			{
-				convert_string_expr(expr->expr,expr->data_type,write);
+				convert_string_expr(expr->expr);
 				break;
 			}
 			case ASTExpressionType::I32:
 			{
-				convert_i32_expr(expr->expr,expr->data_type,write);
+				convert_i32_expr(expr->expr);
 				break;
 			}
 			case ASTExpressionType::I64:
 			{
-				convert_i64_expr(expr->expr,expr->data_type,write);
+				convert_i64_expr(expr->expr);
 				break;
 			}
 			case ASTExpressionType::U32:
 			{
-				convert_u32_expr(expr->expr,expr->data_type,write);
+				convert_u32_expr(expr->expr);
 				break;
 			}
 			case ASTExpressionType::U64:
 			{
-				convert_u64_expr(expr->expr,expr->data_type,write);
+				convert_u64_expr(expr->expr);
 				break;
 			}
 			case ASTExpressionType::F32:
 			{
-				convert_f32_expr(expr->expr,expr->data_type,write);
+				convert_f32_expr(expr->expr);
 				break;
 			}
 			case ASTExpressionType::F64:
 			{
-				convert_f64_expr(expr->expr,expr->data_type,write);
+				convert_f64_expr(expr->expr);
 				break;
 			}
 			case ASTExpressionType::FUNCTION_CALL:
 			{
-				convert_function_call_expr(expr->expr,expr->data_type,write);
+				convert_function_call_expr(expr->expr);
 				break;
 			}
 			case ASTExpressionType::VARIABLE:
 			{
-				return convert_variable_expr(expr->expr,expr->data_type,write);
+				return convert_variable_expr(expr->expr);
 				break;
 			}
 			case ASTExpressionType::SELF:
 			{
-				convert_self_expr(expr->expr,expr->data_type,write);
+				convert_self_expr(expr->expr);
 				break;
 			}
 			case ASTExpressionType::ADDRESS_OF:
 			{
-				convert_address_of_expr(expr->expr,expr->data_type,write);
+				convert_address_of_expr(expr->expr);
 				break;
 			}
 			case ASTExpressionType::PTR_READ:
 			{
 				write_body("(");
-				convert_ptr_read_expr(expr->expr,expr->data_type,write);
+				convert_ptr_read_expr(expr->expr);
 				write_body(")");
 				break;
 			}
 			case ASTExpressionType::PTR_WRITE:
 			{
 				write_body("(");
-				convert_ptr_write_expr(expr->expr,expr->data_type,write);
+				convert_ptr_write_expr(expr->expr);
 				write_body(")");
 				break;
 			}
 			case ASTExpressionType::ASSIGN:
 			{
-				convert_assign_expr(expr->expr,expr->data_type,write);
+				convert_assign_expr(expr->expr);
 				break;
 			}
 			case ASTExpressionType::ENUM_ACCESS:
 			{
-				convert_enum_access_expr(expr->expr,expr->data_type,write);
+				convert_enum_access_expr(expr->expr);
 				break;
 			}
 			case ASTExpressionType::STRUCT_ACCESS:
 			{
-				return convert_struct_access_expr(expr->expr,expr->data_type,write,dot);
+				return convert_struct_access_expr(expr->expr);
+				break;
+			}
+			case ASTExpressionType::STRUCT_METHOD_CALL:
+			{
+				//DEBUG_PANIC("call");
+				return convert_struct_method_call_expr(expr->expr);
 				break;
 			}
 			case ASTExpressionType::STRUCT_PTR_ACCESS:
 			{
-				return convert_struct_ptr_access_expr(expr->expr,expr->data_type,write,dot);
+				return convert_struct_ptr_access_expr(expr->expr);
 				break;
 			}
 			case ASTExpressionType::UNARY:
 			{
-				convert_unary_expr(expr->expr,expr->data_type,write);
+				convert_unary_expr(expr->expr);
 				break;
 			}
 			case ASTExpressionType::BINARY:
 			{
-				convert_binary_expr(expr->expr,expr->data_type,write);
+				convert_binary_expr(expr->expr);
 				break;
 			}
 		}
 
-		return "";
-
 	}
 
 
 
-	std::string convert_struct_ptr_access_expr(void *expr,DataType expr_type,bool write = true,std::string dot = "->")
+	void convert_struct_ptr_access_expr(void *expr)
+	{	
+		convert_expr(((ASTStructPtrAccessExpr *)expr)->base);
+		write_body("->" + ((ASTStructPtrAccessExpr *)expr)->member);
+	}
+
+
+	void convert_struct_access_expr(void *expr)
 	{
-		if(dot == ".")
+		convert_expr(((ASTStructAccessExpr *)expr)->base);
+
+		write_body("." + ((ASTStructAccessExpr *)expr)->member);
+	}
+
+	void convert_struct_method_call_expr(void *expr)
+	{
+		ASTStructMethodCallExpr *Struct = (ASTStructMethodCallExpr *)expr;
+
+		
+		write_body(Struct->prefix + "_" + Struct->member + "(&");
+		convert_expr(Struct->base);
+
+		int arg_length = Struct->args.size();
+
+	
+		if(arg_length > 0)
 		{
-			dot = "->";
+			write_body(",");
 		}
 
-		std::string ret = convert_expr(((ASTStructPtrAccessExpr *)expr)->base);
-		write_body(dot + ((ASTStructPtrAccessExpr *)expr)->member);
+		int i = 0;
 
-		return ret;
-	}
-
-
-	std::string convert_struct_access_expr(void *expr,DataType expr_type,bool write = true,std::string dot = ".")
-	{
-		std::string ret;
-
-		ret = convert_expr(((ASTStructAccessExpr *)expr)->base,write);
-
-		if(dot != ".")
+		for ( ASTExpression *arg : Struct->args)
 		{
-			write_body(((ASTStructAccessExpr *)expr)->base_type);
+			if(arg == nullptr)
+			{
+				break;
+			}
+
+			convert_expr(arg);
+			if(i++ + 1 >= arg_length)
+			{
+				break;
+			}
+
+			write_body(",");
 		}
 
-		write_body(dot + ((ASTStructAccessExpr *)expr)->member);
+		write_body(")");
 
-		return ret;
 	}
 
 
-	void convert_enum_access_expr(void *expr,DataType expr_type,bool write = true)
+
+	void convert_enum_access_expr(void *expr)
 	{
 		write_body(((ASTEnumAccessExpr *)expr)->base + "_" + ((ASTEnumAccessExpr *)expr)->member);
 	}
 
-	void convert_string_expr(void *expr,DataType expr_type,bool write = true)
+	void convert_string_expr(void *expr)
 	{
 		write_body("\"" + ((ASTStringExpr *)expr)->value +"\"");
 	}
 
-	void convert_i32_expr(void *expr,DataType expr_type,bool write = true)
+	void convert_i32_expr(void *expr)
 	{
 		write_body(std::to_string(((ASTI32Expr *)expr)->value));
 	}
 
 
-	void convert_i64_expr(void *expr,DataType expr_type,bool write = true)
+	void convert_i64_expr(void *expr)
 	{
 		write_body(std::to_string(((ASTI64Expr *)expr)->value));
 	}
 
 
 
-	void convert_u64_expr(void *expr,DataType expr_type,bool write = true)
+	void convert_u64_expr(void *expr)
 	{
 		write_body(std::to_string(((ASTU64Expr *)expr)->value));
 	}
 
 
-	void convert_u32_expr(void *expr,DataType expr_type,bool write = true)
+	void convert_u32_expr(void *expr)
 	{
 		write_body(std::to_string(((ASTU32Expr *)expr)->value));
 	}
@@ -842,63 +869,27 @@ typedef void * void_ptr;
 
 
 
-	void convert_f64_expr(void *expr,DataType expr_type,bool write = true)
+	void convert_f64_expr(void *expr)
 	{
 		write_body(std::to_string(((ASTF64Expr *)expr)->value));
 	}
 
 
-	void convert_f32_expr(void *expr,DataType expr_type,bool write = true)
+	void convert_f32_expr(void *expr)
 	{
 		write_body(std::to_string(((ASTF32Expr *)expr)->value));
 	}
 
 
-	void convert_function_call_expr(void *expr,DataType expr_type,bool write = true)
+	void convert_function_call_expr(void *expr)
 	{
 		ASTFunctionCallExpr *fn_expr = (ASTFunctionCallExpr *)expr;
-
-		std::string dot = ".";
-		std::string ptr;
 		
-		if(fn_expr->base->type == ASTExpressionType::STRUCT_ACCESS)
-		{
-			dot = "_";
-			ptr = ".";
-		}
-		else if(fn_expr->base->type == ASTExpressionType::STRUCT_PTR_ACCESS)
-		{
-			dot = "_";
-			ptr = "->";
-		}
-
-		std::string is_self;
-		if(ptr == ".")
-		{
-			is_self = convert_expr(fn_expr->base,false,dot);
-		}
-		else
-		{
-			convert_expr(fn_expr->base,true,dot);
-		}
+		convert_expr(fn_expr->base,true);
 
 		write_body("(");
 
-		if(ptr == ".")
-		{
-			write_body("&" + is_self);
-		}
-		else if(ptr == "->")
-		{
-			write_body(is_self);
-		}
-
 		int arg_length = fn_expr->args.size();
-
-		if(arg_length > 0 and dot == "_")
-		{
-			write_body(",");
-		}
 
 		int i = 0;
 
@@ -918,21 +909,15 @@ typedef void * void_ptr;
 
 
 
-	std::string convert_variable_expr(void *expr,DataType expr_type,bool write = true)
+	void convert_variable_expr(void *expr)
 	{
 		ASTVariableExpr *var_expr = (ASTVariableExpr *)expr;
-
-		if(write == true)
-		{
-			write_body(var_expr->true_ident);
-		}
-
-		return var_expr->true_ident;
+		write_body(var_expr->true_ident);
 	}
 
 
 
-	void convert_self_expr(void *expr,DataType expr_type,bool write = true)
+	void convert_self_expr(void *expr)
 	{
 		ASTSelfExpr *self_expr = (ASTSelfExpr *)expr;
 		write_body(self_expr->ident);
@@ -940,7 +925,7 @@ typedef void * void_ptr;
 
 
 
-	void convert_address_of_expr(void *expr,DataType expr_type,bool write = true)
+	void convert_address_of_expr(void *expr)
 	{
 		ASTAddressOfExpr *address_of_expr = (ASTAddressOfExpr *)expr;
 		write_body("&");
@@ -949,7 +934,7 @@ typedef void * void_ptr;
 
 
 
-	void convert_ptr_read_expr(void *expr,DataType expr_type,bool write = true)
+	void convert_ptr_read_expr(void *expr)
 	{
 		ASTPtrReadExpr *ptr_read_expr = (ASTPtrReadExpr *)expr;
 		write_body("*");
@@ -958,7 +943,7 @@ typedef void * void_ptr;
 
 
 
-	void convert_ptr_write_expr(void *expr,DataType expr_type,bool write = true)
+	void convert_ptr_write_expr(void *expr)
 	{
 		ASTPtrWriteExpr *ptr_write = (ASTPtrWriteExpr *)expr;
 		write_body("*");
@@ -970,7 +955,7 @@ typedef void * void_ptr;
 
 
 
-	void convert_assign_expr(void *expr,DataType expr_type,bool write = true)
+	void convert_assign_expr(void *expr)
 	{
 		ASTAssignExpr *assign_expr = (ASTAssignExpr *)expr;
 		convert_expr(assign_expr->lhs);
@@ -980,7 +965,7 @@ typedef void * void_ptr;
 
 
 
-	void convert_cast_expr(void *expr,DataType expr_type,bool write = true)
+	void convert_cast_expr(void *expr)
 	{
 		ASTCastExpr *cast_expr = (ASTCastExpr *)expr;
 	
@@ -1028,7 +1013,7 @@ typedef void * void_ptr;
 	}
 	
 
-	void convert_binary_expr(void *expr,DataType expr_type,bool write = true)
+	void convert_binary_expr(void *expr)
 	{
 		ASTBinaryExpr *bin_expr = (ASTBinaryExpr *)expr;
 
@@ -1039,7 +1024,7 @@ typedef void * void_ptr;
 
 
 
-	void convert_unary_expr(void *expr,DataType expr_type,bool write = true)
+	void convert_unary_expr(void *expr)
 	{
 		convert_unop(((ASTUnaryExpr *)expr)->op);
 		convert_expr(((ASTUnaryExpr *)expr)->rhs);

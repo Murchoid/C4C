@@ -73,14 +73,30 @@ struct Color:
 :
 
 impl Color:
-    fn new(i32 red,i32 green,i32 blue):
+    fn huh()->i32:
+        self->red = 0
+        return 0
+    :
+
+    fn newh(i32 red,i32 green,i32 blue)->void:
         self->red = red
         self->green = green
         self->blue = blue
     :
 
     fn get_red()->i32:
-        return self.red
+        return self->red
+    :
+:
+
+
+struct Pixel:
+    Color color
+:
+
+impl Color:
+    fn get_red()->i32:
+        self->color.red
     :
 :
 
@@ -95,7 +111,13 @@ fn main()->i32:
         .blue = 78,
     :
 
-    return color.get_red()
+    //color.huh()
+
+    Pixel pixel = Pixel:
+        .color = color,
+    :
+
+    return pixel.color.get_red()
 :
 
 
