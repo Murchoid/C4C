@@ -8,7 +8,7 @@ memcheck: clean $(TARGET)/driver
 	valgrind --leak-check=full -s $(TARGET)/driver $(TEST)/test.rs
 
 run:clean $(TARGET)/driver
-	$(TARGET)/driver  $(TEST)/test.rs
+	$(TARGET)/driver --input  $(TEST)/test.rs --output huh
 
 
 $(TARGET)/driver: $(SRC)/driver.cpp

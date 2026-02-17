@@ -66,6 +66,8 @@ fn main()->i32:
 
 */
 
+/*
+
 struct Color:
     i32 red
     i32 green
@@ -94,7 +96,7 @@ struct Pixel:
     Color color
 :
 
-impl Color:
+impl Pixel:
     fn get_red()->i32:
         self->color.red
     :
@@ -117,9 +119,15 @@ fn main()->i32:
         .color = color,
     :
 
-    return pixel.color.get_red()
+    //return pixel.color.get_red()
 :
 
 
+*/
 
 
+pub fn main()->i32:
+    i32 a = 90
+    i32 *b = &a
+    return b@write(78) + 7 + b@write(50)
+:

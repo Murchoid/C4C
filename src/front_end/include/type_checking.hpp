@@ -634,7 +634,7 @@ public:
             }
         }
 
-        DEBUG_PRINT(decl->ident,"  in symbol");
+        //DEBUG_PRINT(decl->ident,"  in symbol");
 
         /*
         switch (decl->type->type_type)
@@ -1371,7 +1371,8 @@ public:
                     fatal("trying to read from a non-pointer type is invalid");
                 }
 
-                read->add_data_type((ASTType *)read->expr->data_type->type);
+                ASTPointer *ptr = (ASTPointer *)read->expr->data_type->type;
+                read->add_data_type((ASTType *)ptr->type);
                 expr->add_data_type(read->data_type);
 
                 break;
@@ -1386,7 +1387,8 @@ public:
                     fatal("trying to read from a non-pointer type is invalid");
                 }
 
-                write->add_data_type((ASTType *)write->expr->data_type->type);
+                ASTPointer *ptr = (ASTPointer *)write->expr->data_type->type;
+                write->add_data_type((ASTType *)ptr->type);
                 expr->add_data_type(write->data_type);
                 break;
             }
@@ -1618,7 +1620,7 @@ public:
                                     }
                                     default:
                                     {
-                                        //std::cout << "   TYPE   :  "  << (int)binary_expr->lhs->data_type << std::endl;
+                                        std::cout << "   TYPE   :  "  << (int)binary_expr->lhs->data_type->type_type << std::endl;
                                         fatal("binary expr case : unsupported ASTType *encountered");
                                         break;
                                     }

@@ -6,31 +6,26 @@ global main
 main:
 	push rbp
 	mov rbp,rsp
-	sub rsp,80
+	sub rsp,32
 	mov DWORD [rbp - 4],90
-	mov DWORD [rbp - 8],89
 	lea r11,DWORD [rbp - 4]
-	mov QWORD [rbp - 16],r11
-	mov r11,QWORD [rbp - 16]
-	mov QWORD [rbp - 24],r11
-	lea r11,DWORD [rbp - 8]
-	mov QWORD [rbp - 32],r11
-	mov r11,QWORD [rbp - 32]
-	mov QWORD [rbp - 40],r11
-	lea r11,QWORD [rbp - 24]
-	mov QWORD [rbp - 48],r11
-	mov r11,QWORD [rbp - 48]
-	mov QWORD [rbp - 56],r11
-	lea r11,QWORD [rbp - 40]
-	mov QWORD [rbp - 64],r11
-	mov r11,QWORD [rbp - 64]
-	mov QWORD [rbp - 72],r11
-	mov rax,QWORD [rbp - 56]
+	mov QWORD [rbp - 12],r11
+	mov r11,QWORD [rbp - 12]
+	mov QWORD [rbp - 20],r11
+	mov rax,QWORD [rbp - 20]
+	mov QWORD [rax - 0],78
+	mov rax,QWORD [rbp - 20]
 	mov r11,QWORD [rax - 0]
-	mov QWORD [rbp - 80],r11
-	mov rax,QWORD [rbp - 80]
-	mov QWORD [rax - 0],165
-	mov eax,DWORD [rbp - 4]
+	mov DWORD [rbp - 24],r11d
+	add DWORD [rbp - 24],7
+	mov rax,QWORD [rbp - 20]
+	mov QWORD [rax - 0],50
+	mov rax,QWORD [rbp - 20]
+	mov r11d,DWORD [rbp - 24]
+	mov DWORD [rbp - 28],r11d
+	mov r11,QWORD [rax - 0]
+	add DWORD [rbp - 28],r11d
+	mov eax,DWORD [rbp - 28]
 	mov rsp,rbp
 	pop rbp
 	ret

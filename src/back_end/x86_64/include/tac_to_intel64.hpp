@@ -214,7 +214,7 @@ public:
 			{
 				continue;
 			}
-			DEBUG_PRINT("here "," inst loop");
+			//DEBUG_PRINT("here "," inst loop");
 			convert_instruction(inst);
 		}
 
@@ -1171,6 +1171,57 @@ public:
 	}
 
 
+	ASMType convert_type(TACType type)
+	{
+		switch(type)
+        {
+            case TACType::I8:
+			{
+				return ASMType::I8;
+			}
+            case TACType::I16:
+			{
+				return ASMType::I16;
+			}
+            case TACType::I32:
+			{
+				return ASMType::I32;
+			}
+            case TACType::I64:
+			{
+				return ASMType::I64;
+			}
+            case TACType::U8:
+			{
+				return ASMType::U8;
+			}
+            case TACType::U16:
+			{
+				return ASMType::U16;
+			}
+            case TACType::U32:
+			{
+				return ASMType::U32;
+			}
+            case TACType::U64:
+			{
+				return ASMType::U64;
+			}
+            case TACType::CHAR:
+			{
+				return ASMType::CHAR;
+			}
+            case TACType::POINTER:
+			{
+				return ASMType::I64;
+			}
+			default:
+			{
+					DEBUG_PANIC(" unsupported ast to tac type");
+			}
+        }
+	}
+
 	ASMOperand *convert_value(TACValue *value)
 	{
 		ASMOperand *asm_operand = nullptr;
@@ -1285,6 +1336,42 @@ public:
 				asm_operand = new(mem) ASMOperand(ASMOperandType::PSEUDO,asm_pseudo);
 				asm_operand->add_type(data_type);
 				break;
+			}
+			case TACValueType::DEREF:
+			{
+				
+				TACDeref *tac_deref = (TACDeref *)value->value;
+				
+				ASMOperand *asm_dst = convert_value(tac_deref->value);
+
+				void *mem = alloc(sizeof(ASMRegister));
+				ASMRegister *asm_reg = new(mem) ASMRegister(ASMRegisterType::RAX,8);
+				
+
+				mem = alloc(sizeof(ASMOperand));
+				ASMOperand *asm_tmp = new(mem) ASMOperand(ASMOperandType::REGISTER,asm_reg);
+				asm_tmp->add_type(ASMType::I64);
+		
+				mem = alloc(sizeof(ASMMovInst));
+				ASMMovInst *asm_mov = new(mem) ASMMovInst(asm_tmp,asm_dst);
+				asm_mov->add_type(ASMType::I64);
+
+				mem = alloc(sizeof(ASMInstruction));
+				ASMInstruction *asm_inst = new(mem) ASMInstruction(ASMInstructionType::MOV,asm_mov);
+				this->inst->push_back(asm_inst);
+
+
+
+				mem = alloc(sizeof(ASMStack));
+				ASMStack *stack = new(mem)ASMStack(8,"rax",0);
+
+
+				mem = alloc(sizeof(ASMOperand));
+				asm_operand = new(mem) ASMOperand(ASMOperandType::STACK,stack);
+				asm_operand->add_type(ASMType::I32);
+
+				break;
+
 			}
 			default:
 			{

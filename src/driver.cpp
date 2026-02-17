@@ -4,15 +4,15 @@
 #include "front_end/include/preprocessor.hpp"
 #include "front_end/include/parser.hpp"
 
-
+#include "utils/include/argparse.hpp"
 #include "middle_end/C/include/ast_to_c.hpp"
 
 #include "front_end/include/identifier_resolution.hpp"
 #include "front_end/include/type_checking.hpp"
 #include "front_end/include/loop_labelling.hpp"
 
-/*
-#include "middle_end/JS/include/ast_to_js.hpp"
+
+//#include "middle_end/JS/include/ast_to_js.hpp"
 
 #include "middle_end/C/include/ast_to_c.hpp"
 #include "middle_end/tac/include/ast_to_tac.hpp"
@@ -21,10 +21,97 @@
 #include "back_end/x86_64/include/fixup.hpp"
 
 #include "back_end/x86_64/include/codegen.hpp"
-*/
 
-int main(int argc,char *argv[])
+
+int main(int argc,char **argv)
 {
+	Argparser argparse("c4c","c4c","c4c compiler ecosystem","0.0.0");
+    argparse.add_argument(Argument("i","input","set the input c4 file"," help : set the input c4 file",ArgumentType::STRING));
+	argparse.add_argument(Argument("o","output","set the output file"," help : set the output file",ArgumentType::STRING));
+	argparse.add_argument(Argument("t","target","set the target backend"," help : set the target backend",ArgumentType::STRING));
+    argparse.parse(argc,argv);
+    
+	std::string file_name = argparse.get_value_string("input");
+	puts("compilation begin");
+
+	FileToString fs(file_name);
+	std::string file_contents = fs.read();
+	//DEBUG_PRINT(file_contents,"");
+
+	Preprocessor preprocessor(file_name, file_contents);
+	std::string processed_output = preprocessor.run();
+	preprocessor.print_errors();
+	
+	//DEBUG_PRINT("processed output is: ", processed_output);
+	Lexer lexer(file_name,processed_output);
+	std::vector<Tokens> tokens = lexer.scan_tokens();
+	lexer.print_errors();
+	//lexer.print();
+
+	//DEBUG_PRINT("sanity check : ", " after lexer ");
+
+	{
+		Arena arena(1000000);
+		
+		Parser parser(file_name,tokens,&arena);
+		parser.parse_program();
+		DEBUG_PRINT("sanity check : ", " after parser ");
+		//arena.reset();
+
+		IdentifierResolution resolve(file_name,parser.program);
+
+		DEBUG_PRINT("sanity check : ", " after ident resolution ");
+
+
+		//AstToC C(file_name,parser.program);
+		//StringToFile(file_name.substr(0, file_name.length() - 3) + ".c",C.string);
+
+		//return 0;
+
+		//AstToJS JS(file_name,resolve.program);
+		//StringToFile(file_name.substr(0, file_name.length() - 3) + ".js",JS.string);
+		
+
+	
+
+		TypeChecking type_check(file_name,resolve.program,&arena);
+		DEBUG_PRINT("sanity check : ", " after resolve ");
+
+		LoopLabelling loop_label(file_name,type_check.program,resolve.global_counter);
+
+		AstToC C(file_name,loop_label.program);
+		StringToFile(file_name.substr(0, file_name.length() - 3) + ".c",C.string);
+
+/*		
+*/
+		AstToTac tac(file_name,loop_label.program,&arena,loop_label.global_counter,type_check.table);
+
+		DEBUG_PRINT("sanity check : ", " after ast to tac ");
+		TacToIntel64 intel(file_name,tac.program,&arena);
+
+		DEBUG_PRINT("sanity check : ", " after tac to intel64");
+		Pseudo pseudo(file_name,intel.program,&arena,type_check.table);
+		DEBUG_PRINT("sanity check : ", " after replace pseudo");
+		FixUp fix(file_name,pseudo.program,&arena);
+
+		DEBUG_PRINT("sanity check : ", " after fix inst");
+		Codegen gen(file_name,intel.program);
+		DEBUG_PRINT("sanity check : ", " after codegen");
+		StringToFile(file_name.substr(0, file_name.length() - 3) + ".asm",gen.string);
+
+		//DEBUG_PANIC("testing");
+
+/*		*/
+		
+	}
+
+	puts("compilation end");
+	return 0;
+}
+
+int main1(int argc,char *argv[])
+{
+
 	std::string file_name(argv[1]);
 	std::cout << " hello c4c compiler " << file_name << std::endl;
 
@@ -77,7 +164,7 @@ int main(int argc,char *argv[])
 		StringToFile(file_name.substr(0, file_name.length() - 3) + ".c",C.string);
 
 /*		
-
+*/
 		AstToTac tac(file_name,loop_label.program,&arena,loop_label.global_counter,type_check.table);
 
 		DEBUG_PRINT("sanity check : ", " after ast to tac ");
@@ -95,7 +182,10 @@ int main(int argc,char *argv[])
 
 		//DEBUG_PANIC("testing");
 
-		*/
+/*		*/
 		
 	}
+
+	puts("huh");
+	return 0;
 }

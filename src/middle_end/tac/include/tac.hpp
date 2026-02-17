@@ -3,6 +3,10 @@
 
 #include <string>
 #include <vector>
+#include "../../../front_end/include/ast.hpp"
+#include "../../../front_end/include/identifier_resolution.hpp"
+#include "../../../front_end/include/type_checking.hpp"
+#include "../../../front_end/include/loop_labelling.hpp"
 
 class TACProgram;
 class TACDeclaration;
@@ -15,11 +19,16 @@ class TACValue;
 
 enum class TACType
 {
-	I32 = 1,
+	CHAR,
+	I8,
+	I16,
+	I32,
 	I64,
+	U8,
+	U16,
 	U32,
 	U64,
-	PTR,
+	POINTER,
 };
 
 
@@ -501,6 +510,7 @@ enum class TACValueType
 {
 	CONSTANT = 2,
 	VARIABLE,
+	DEREF,
 };
 
 class TACValue
@@ -563,7 +573,16 @@ public:
 	}
 };
 
-
+class TACDeref
+{
+public:
+	TACValue *value;
+	
+	TACDeref(TACValue *value)
+	{
+		this->value = value;
+	}
+};
 
 
 #endif

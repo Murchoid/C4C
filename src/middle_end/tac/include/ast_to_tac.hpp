@@ -160,6 +160,8 @@ public:
 	*/
 
 
+
+
 	TACFunction *convert_function(ASTFunctionDecl *decl)
 	{
 		void *mem = alloc(sizeof(TACFunction));
@@ -172,25 +174,7 @@ public:
 				continue;
 			}
 
-			TACType data_type;
-
-			switch(arg->type->type)
-			{
-				case ASTDataType::I32:
-				{
-					data_type = TACType::I32;
-					break;
-				}
-				case ASTDataType::I64:
-				{
-					data_type = TACType::I64;
-					break;
-				}
-				default:
-				{
-					break;
-				}
-			}
+			TACType data_type = convert_type(arg->type);
 
 			TACArgument tac_arg(arg->ident,data_type);
 
@@ -402,46 +386,74 @@ public:
 
 	}
 
+
+	TACType convert_type(ASTType *type)
+	{
+		switch(type->type_type)
+        {
+            case ASTDataType::I8:
+			{
+				return TACType::I8;
+			}
+            case ASTDataType::I16:
+			{
+				return TACType::I16;
+			}
+            case ASTDataType::I32:
+			{
+				return TACType::I32;
+			}
+            case ASTDataType::I64:
+			{
+				return TACType::I64;
+			}
+            case ASTDataType::U8:
+			{
+				return TACType::U8;
+			}
+            case ASTDataType::U16:
+			{
+				return TACType::U16;
+			}
+            case ASTDataType::U32:
+			{
+				return TACType::U32;
+			}
+            case ASTDataType::U64:
+			{
+				return TACType::U64;
+			}
+            case ASTDataType::CHAR:
+			{
+				return TACType::CHAR;
+			}
+            case ASTDataType::POINTER:
+			{
+				return TACType::I64;
+			}/*
+            case ASTDataType::STRUCT:
+            {
+                return true;
+                break;
+            }*/
+		   default:
+		   {
+				DEBUG_PANIC(" unsupported ast to tac type");
+		   }
+        }
+	}
+
+
 	void convert_vardecl_stmt(ASTVarDecl *stmt)
 	{
-		TACType data_type;
+		TACType data_type = convert_type(stmt->type);
 
-		switch(stmt->type->type)
+		TACValue *tac_src;
+
+		if(stmt->init->type == ASTVarInitType::SINGLE)
 		{
-			case ASTDataType::I32:
-			{
-				data_type = TACType::I32;
-				break;
-			}
-			case ASTDataType::I64:
-			{
-				data_type = TACType::I64;
-				break;
-			}
-			case ASTDataType::U32:
-			{
-				data_type = TACType::U32;
-				break;
-			}
-			case ASTDataType::U64:
-			{
-				data_type = TACType::U64;
-				break;
-			}
-			default:
-			{
-				DEBUG_PANIC("tac cast ");
-				break;
-			}
+			tac_src = convert_expr(((ASTVarSingleInit *)stmt->init->init)->expr);
 		}
-
-
-		if(stmt->type->ptr > 0)
-		{
-			data_type = TACType::I64;
-		}
-
-		TACValue *tac_src = convert_expr(stmt->expr);
 
 		void *mem = alloc(sizeof(TACVariable));
 		TACVariable *tac_var = new(mem) TACVariable(stmt->ident);
@@ -554,31 +566,11 @@ public:
 	}
 
 
-	TACValue *convert_function_call_expr(void *expr,DataType expr_type)
+	TACValue *convert_function_call_expr(void *expr,ASTType *expr_type)
 	{
 		ASTFunctionCallExpr *fn_expr = (ASTFunctionCallExpr *)expr;
 
-		TACType data_type;
-
-		switch(expr_type)
-		{
-			case DataType::I32:
-			{
-				data_type = TACType::I32;
-				break;
-			}
-			case DataType::I64:
-			{
-				data_type = TACType::I64;
-				break;
-			}
-			default:
-			{
-				DEBUG_PANIC("unsupported data type in function cal => tac ");
-				break;
-			}
-		}
-
+		TACType data_type = convert_type(expr_type);
 		std::string tac_dst_ident = make_tmp2(expr_type);
 
 		void *mem = alloc(sizeof(TACVariable));
@@ -588,11 +580,13 @@ public:
 		std::cout << " ident : " << tac_dst_ident << "   type  => "  << (int)data_type <<std::endl;
 
 		mem = alloc(sizeof(TACValue));
-		TACValue *tac_dst = new(mem)TACValue(TACValueType::VARIABLE,tac_var);\
+		TACValue *tac_dst = new(mem)TACValue(TACValueType::VARIABLE,tac_var);
 		tac_dst->add_type(data_type);
 
+		std::string ident = "tmp_func";
+
 		mem = alloc(sizeof(TACFunctionCallInst));
-		TACFunctionCallInst *tac_fn = new(mem) TACFunctionCallInst(fn_expr->ident,tac_dst);
+		TACFunctionCallInst *tac_fn = new(mem) TACFunctionCallInst(ident,tac_dst);
 		tac_fn->add_type(data_type);
 
 
@@ -610,7 +604,7 @@ public:
 
 
 
-	TACValue *convert_address_of_expr(void *expr,DataType expr_type)
+	TACValue *convert_address_of_expr(void *expr,ASTType *expr_type)
 	{
 		DEBUG_PRINT("######################################################"," get address");
 		TACValue *tac_src = convert_expr(((ASTAddressOfExpr *)expr)->expr);
@@ -645,13 +639,13 @@ public:
 
 
 
-	TACValue *convert_ptr_read_expr(void *expr,DataType expr_type)
+	TACValue *convert_ptr_read_expr(void *expr,ASTType *expr_type)
 	{
 		
 		TACValue *tac_src = convert_expr(((ASTPtrReadExpr *)expr)->expr);
 
 		TACType dst_type;
-		dst_type = TACType::I64;
+		dst_type = convert_type(expr_type);
 
 
 		std::string tac_dst_ident = make_tmp2(expr_type);
@@ -678,41 +672,17 @@ public:
 
 
 
-	TACValue *convert_ptr_write_expr(void *expr,DataType expr_type)
+	TACValue *convert_ptr_write_expr(void *expr,ASTType *expr_type)
 	{
 		TACValue *tac_dst = convert_expr(((ASTPtrWriteExpr *)expr)->expr);
 		TACValue *tac_src = convert_expr(((ASTPtrWriteExpr *)expr)->data);
 
 		TACType type = TACType::I64;
+		ASTPointer *ptr = ((ASTPointer *)((ASTPtrWriteExpr *)expr)->expr->data_type->type);
+		
+		type = convert_type(ptr->type);
 
-		if(((ASTPtrWriteExpr *)expr)->expr->ptr_type.ptr_no <= 1)
-		{
-			switch (((ASTPtrWriteExpr *)expr)->expr->ptr_type.base_type)
-			{
-				case DataType::I32:
-				{
-					type = TACType::I32;
-					break;
-				}
-				case DataType::I64:
-				{
-					type = TACType::I64;
-					break;
-				}
-				case DataType::U32:
-				{
-					type = TACType::U32;
-					break;
-				}
-				case DataType::U64:
-				{
-					type = TACType::U64;
-					break;
-				}
-			}
-		}
-
-		std::cout << "ptr write dst type : " << (int)type << "   {}  ptr_no   "  << ((ASTPtrWriteExpr *)expr)->expr->ptr_type.ptr_no << std::endl;
+		std::cout << "ptr write dst type : " << (int)type << std::endl;
 
 		void *mem = alloc(sizeof(TACStoreInst));
 		TACStoreInst *tac_inst = new(mem) TACStoreInst(tac_dst,tac_src);
@@ -724,52 +694,23 @@ public:
 		mem = alloc(sizeof(TACInstruction));
 		this->inst->push_back(new(mem) TACInstruction(TACInstructionType::STORE,tac_inst));
 
-		return tac_dst;
+		mem = alloc(sizeof(TACDeref));
+		TACDeref *tac_deref = new(mem) TACDeref(tac_dst);
 
+		mem = alloc(sizeof(TACValue));
+		TACValue *tac_ret = new(mem) TACValue(TACValueType::DEREF,tac_deref);
+		tac_ret->add_type(convert_type(expr_type));
+
+		return tac_ret;
 	}
 
 
 
-	TACValue *convert_variable_expr(void *expr,DataType expr_type)
+	TACValue *convert_variable_expr(void *expr,ASTType *expr_type)
 	{
 		ASTVariableExpr *var_expr = (ASTVariableExpr *)expr;
 
-		TACType data_type;
-
-		switch(var_expr->data_type)
-		{
-			case DataType::I32:
-			{
-				data_type = TACType::I32;
-				break;
-			}
-			case DataType::I64:
-			{
-				data_type = TACType::I64;
-				break;
-			}
-			case DataType::U32:
-			{
-				data_type = TACType::U32;
-				break;
-			}
-			case DataType::U64:
-			{
-				data_type = TACType::U64;
-				break;
-			}
-			case DataType::PTR:
-			{
-				data_type = TACType::I64;
-				break;
-			}
-			default:
-			{
-				std::cout << "  :  " << (int)expr_type << std::endl;
-				DEBUG_PANIC(" unsupported data type in convert variable expr => TAC ");
-				break;
-			}
-		}
+		TACType data_type = convert_type(var_expr->data_type);
 
 
 		void *mem = alloc(sizeof(TACVariable));
@@ -785,53 +726,13 @@ public:
 	}
 
 
-	TACValue *convert_assign_expr(void *expr,DataType expr_type)
+	TACValue *convert_assign_expr(void *expr,ASTType *expr_type)
 	{
 		ASTAssignExpr *assign_expr = (ASTAssignExpr *)expr;
 		TACValue *tac_dst = convert_expr(assign_expr->lhs);
 		TACValue *tac_src = convert_expr(assign_expr->rhs);
 
-		TACType data_type;
-
-		switch(expr_type)
-		{
-			case DataType::I32:
-			{
-				//DEBUG_PANIC("the fuckery tac");
-				data_type = TACType::I32;
-				break;
-			}
-			case DataType::I64:
-			{
-				
-				//DEBUG_PANIC("the fuckery tac");
-				data_type = TACType::I64;
-				break;
-			}
-			case DataType::U32:
-			{
-				//DEBUG_PANIC("the fuckery tac");
-				data_type = TACType::U32;
-				break;
-			}
-			case DataType::U64:
-			{
-				
-				//DEBUG_PANIC("the fuckery tac");
-				data_type = TACType::U64;
-				break;
-			}
-			case DataType::PTR:
-			{
-				data_type = TACType::I64;
-				break;
-			}
-			default:
-			{
-				DEBUG_PANIC(" assign ");
-				break;
-			}
-		}
+		TACType data_type = convert_type(expr_type);
 
 		if(data_type != tac_dst->data_type)
 		{
@@ -852,42 +753,13 @@ public:
 	
 
 
-	TACValue *convert_cast_expr(void *expr,DataType expr_type)
+	TACValue *convert_cast_expr(void *expr,ASTType *expr_type)
 	{
 		ASTCastExpr *cast_expr = (ASTCastExpr *)expr;
 		TACValue *tac_result = convert_expr(cast_expr->rhs);
 
 
-		TACType data_type;
-
-		switch(expr_type)
-		{
-			case DataType::I32:
-			{
-				data_type = TACType::I32;
-				break;
-			}
-			case DataType::I64:
-			{
-				data_type = TACType::I64;
-				break;
-			}
-			case DataType::U32:
-			{
-				data_type = TACType::U32;
-				break;
-			}
-			case DataType::U64:
-			{
-				data_type = TACType::U64;
-				break;
-			}
-			default:
-			{
-				DEBUG_PANIC("tac cast ");
-				break;
-			}
-		}
+		TACType data_type = convert_type(expr_type);
 
 		/*
 		if(data_type != tac_result->data_type)
@@ -917,7 +789,7 @@ public:
 		TACValue *tac_dst = new(mem)TACValue(TACValueType::VARIABLE,tac_var);
 		tac_dst->add_type(data_type);
 
-		if( (cast_expr->data_type == DataType::I32 and cast_expr->rhs->data_type == DataType::U32) or (cast_expr->data_type == DataType::I64 and cast_expr->rhs->data_type == DataType::U64))
+		if( (cast_expr->data_type->type_type == ASTDataType::I32 and cast_expr->rhs->data_type->type_type == ASTDataType::U32) or (cast_expr->data_type->type_type == ASTDataType::I64 and cast_expr->rhs->data_type->type_type == ASTDataType::U64))
 		{
 			tac_result->add_type(data_type);
 			mem = alloc(sizeof(TACCopyInst));
@@ -927,7 +799,7 @@ public:
 			mem = alloc(sizeof(TACInstruction));
 			this->inst->push_back(new(mem) TACInstruction(TACInstructionType::COPY,tac_cast));
 		}
-		else if( (cast_expr->data_type == DataType::I32 and (cast_expr->rhs->data_type == DataType::I64 or cast_expr->rhs->data_type == DataType::U64 ) ) or (cast_expr->data_type == DataType::U32 and (cast_expr->rhs->data_type == DataType::I64 or cast_expr->rhs->data_type == DataType::U64 ) ) )
+		else if( (cast_expr->data_type->type_type == ASTDataType::I32 and (cast_expr->rhs->data_type->type_type == ASTDataType::I64 or cast_expr->rhs->data_type->type_type == ASTDataType::U64 ) ) or (cast_expr->data_type->type_type == ASTDataType::U32 and (cast_expr->rhs->data_type->type_type == ASTDataType::I64 or cast_expr->rhs->data_type->type_type == ASTDataType::U64 ) ) )
 		{	
 			tac_result->add_type(data_type);
 			mem = alloc(sizeof(TACTruncateInst));
@@ -937,7 +809,7 @@ public:
 			mem = alloc(sizeof(TACInstruction));
 			this->inst->push_back(new(mem) TACInstruction(TACInstructionType::TRUNCATE,tac_cast));
 		}
-		else if( cast_expr->rhs->data_type == DataType::I32 or cast_expr->rhs->data_type == DataType::I64 )
+		else if( cast_expr->rhs->data_type->type_type == ASTDataType::I32 or cast_expr->rhs->data_type->type_type == ASTDataType::I64 )
 		{
 			tac_result->add_type(data_type);
 			mem = alloc(sizeof(TACSignExtendInst));
@@ -997,7 +869,7 @@ public:
 	}
 	
 
-	TACValue *convert_binary_expr(void *expr,DataType expr_type)
+	TACValue *convert_binary_expr(void *expr,ASTType *expr_type)
 	{
 		TACValue *tac_dst = nullptr;
 		ASTBinaryExpr *bin_expr = (ASTBinaryExpr *)expr;
@@ -1019,7 +891,7 @@ public:
 		return tac_dst;
 	}
 
-	TACValue *convert_binary_and(void *expr,DataType expr_type)
+	TACValue *convert_binary_and(void *expr,ASTType *expr_type)
 	{
 		std::string false_label_ident = make_label();
 
@@ -1118,7 +990,7 @@ public:
 	}
 
 
-	TACValue *convert_binary_or(void *expr,DataType expr_type)
+	TACValue *convert_binary_or(void *expr,ASTType *expr_type)
 	{
 		std::string false_label_ident = make_label();
 
@@ -1219,41 +1091,12 @@ public:
 
 
 
-	TACValue *convert_binary_normal(void *expr,DataType expr_type)
+	TACValue *convert_binary_normal(void *expr,ASTType *expr_type)
 	{
 		TACValue *tac_src1 = convert_expr(((ASTBinaryExpr *)expr)->lhs);
 		TACValue *tac_src2 = convert_expr(((ASTBinaryExpr *)expr)->rhs);
 
-		TACType dst_type;
-
-		switch(expr_type)
-		{
-			case DataType::I32:
-			{
-				dst_type = TACType::I32;
-				break;
-			}
-			case DataType::I64:
-			{
-				dst_type = TACType::I64;
-				break;
-			}
-			case DataType::U32:
-			{
-				dst_type = TACType::U32;
-				break;
-			}
-			case DataType::U64:
-			{
-				dst_type = TACType::U64;
-				break;
-			}
-			default:
-			{
-				std::cout << "type : " << (int)expr_type << " "  << (int)tac_src1->data_type << std::endl;
-				DEBUG_PANIC(" unsupported dst type in binary_normal [tac] ");
-			}
-		}
+		TACType dst_type = convert_type(expr_type);
 
 
 		std::string tac_dst_ident = make_tmp2(expr_type);
@@ -1279,7 +1122,7 @@ public:
 		return tac_dst;
 	}
 
-	TACValue *convert_unary_expr(void *expr,DataType expr_type)
+	TACValue *convert_unary_expr(void *expr,ASTType *expr_type)
 	{
 		TACValue *tac_src = convert_expr(((ASTUnaryExpr *)expr)->rhs);
 
@@ -1307,7 +1150,7 @@ public:
 	}
 
 
-	TACValue *convert_i32_expr(void *expr,DataType expr_type)
+	TACValue *convert_i32_expr(void *expr,ASTType *expr_type)
 	{
 		TACConstant *tac_const = convert_i32_constant((ASTI32Expr *)expr);
 		void *mem = alloc(sizeof(TACValue));
@@ -1331,7 +1174,7 @@ public:
 
 
 
-	TACValue *convert_i64_expr(void *expr,DataType expr_type)
+	TACValue *convert_i64_expr(void *expr,ASTType *expr_type)
 	{
 		TACConstant *tac_const = convert_i64_constant((ASTI64Expr *)expr);
 		void *mem = alloc(sizeof(TACValue));
@@ -1358,7 +1201,7 @@ public:
 
 
 
-	TACValue *convert_u32_expr(void *expr,DataType expr_type)
+	TACValue *convert_u32_expr(void *expr,ASTType *expr_type)
 	{
 		TACConstant *tac_const = convert_u32_constant((ASTU32Expr *)expr);
 		void *mem = alloc(sizeof(TACValue));
@@ -1382,7 +1225,7 @@ public:
 
 
 
-	TACValue *convert_u64_expr(void *expr,DataType expr_type)
+	TACValue *convert_u64_expr(void *expr,ASTType *expr_type)
 	{
 		TACConstant *tac_const = convert_u64_constant((ASTU64Expr *)expr);
 		void *mem = alloc(sizeof(TACValue));
@@ -1490,7 +1333,7 @@ public:
 		return name;
 	}
 
-	std::string make_tmp2(DataType type,std::string base="")
+	std::string make_tmp2(ASTType *type,std::string base="")
 	{
 		std::string name = make_tmp(base);
 		Symbol symbol(name,type,true);

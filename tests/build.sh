@@ -7,7 +7,7 @@ echo ""
 gcc test.c -o test
 ./test
 echo $?
-exit
+
 
 echo "----------------"
 echo ""

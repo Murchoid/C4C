@@ -413,8 +413,29 @@ public:
 		write_body("\n");
 	}
 
+	void fix_add(ASMAddInst *inst)
+	{
+		switch(inst->dst->data_type)
+		{
+			case ASMType::I32:
+			{
+				switch (inst->src->type)
+				{
+					case ASMOperandType::REGISTER:
+					{
+						ASMRegister *asm_reg = (ASMRegister *)inst->src->operand;
+						asm_reg->size = 4;
+						break;
+					}
+				}
+				break;
+			}
+		}
+	}
+
 	void gen_add_inst(ASMAddInst *inst)
 	{
+		fix_add(inst);
 		write_body("\tadd ");
 		gen_operand(inst->dst);
 		write_body(",");
