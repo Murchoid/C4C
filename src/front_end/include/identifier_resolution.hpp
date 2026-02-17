@@ -520,6 +520,13 @@ public:
                 resolve_expr(ptr_write->data,ident_map);
                 break;
             }
+            case ASTExpressionType::PTR_OFFSET:
+            {
+                ASTPtrOffsetExpr *ptr_write = (ASTPtrOffsetExpr *)expr->expr;
+                resolve_expr(ptr_write->expr,ident_map);
+                resolve_expr(ptr_write->offset,ident_map);
+                break;
+            }
             case ASTExpressionType::VARIABLE:
 			{
                 ASTVariableExpr *var_expr = (ASTVariableExpr *)expr->expr;

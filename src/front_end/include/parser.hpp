@@ -1527,6 +1527,22 @@ public:
 			type->add_type(ptr);
 		}
 
+		while(is_token("["))
+		{
+			consume();
+
+			mem = alloc(sizeof(ASTArray));
+			ASTArray *array = new(mem) ASTArray(type,parse_expr(0));
+
+			mem = alloc(sizeof(ASTType));
+			type = new(mem) ASTType();
+
+			type->add_type_type(ASTDataType::ARRAY);
+			type->add_type(array);
+
+			expect_symbol("]");
+		}
+
 		return type;
 	}
 
@@ -1667,6 +1683,109 @@ public:
 		return stmt;
 	}
 
+	ASTVarInit *parse_single_init(ASTType *type)
+	{
+		void *mem = alloc(sizeof(ASTVarSingleInit));
+		ASTVarSingleInit *single_init = new(mem) ASTVarSingleInit(parse_expr(0));
+
+		mem = alloc(sizeof(ASTVarInit));
+		ASTVarInit *var_init = new(mem) ASTVarInit(ASTVarInitType::SINGLE,single_init);
+
+		return var_init;
+	}
+
+
+	ASTVarInit *parse_array_init(ASTType *type)
+	{
+		ASTArray *Array = (ASTArray *)type->type;
+		void *mem = alloc(sizeof(ASTVarArrayInit));
+		ASTVarArrayInit *array_init = new(mem)ASTVarArrayInit();
+
+		expect_symbol("[");
+
+		while(true)
+		{
+			
+			array_init->add_element(parse_init(Array->type));
+		
+			if(is_token("]"))
+			{
+				break;
+			}
+			
+			expect_symbol(",");
+		}
+
+		expect_symbol("]");
+
+		mem = alloc(sizeof(ASTVarInit));
+		ASTVarInit *var_init = new(mem) ASTVarInit(ASTVarInitType::ARRAY,array_init);
+
+		return var_init;
+	}
+
+	ASTVarInit *parse_struct_init(ASTType *type)
+	{
+		ASTStruct *Struct = (ASTStruct *)type->type;
+
+		void *mem = alloc(sizeof(ASTVarStructInit));
+		ASTVarStructInit *struct_init = new(mem)ASTVarStructInit();
+
+		std::string struct_name = consume().string;
+		if(Struct->ident != struct_name)
+		{
+			fatal("unmatching var declarsation with struct init");
+		}
+
+		struct_init->add_ident(struct_name);
+
+		expect_symbol(":");
+
+		while(true)
+		{
+			if(is_token(":"))
+			{
+				break;
+			}
+
+			expect_symbol(".");
+			if(match_identifier())
+			{
+				std::string member = consume().string;
+				expect_symbol("=");
+				ASTExpression *member_expr = parse_expr(0);
+				struct_init->add_member(member,member_expr);
+				expect_symbol(",");
+			}
+			else
+			{
+				fatal("expected an identifier in struct init(compound)");
+			}
+		}
+
+		expect_symbol(":");
+
+		mem = alloc(sizeof(ASTVarInit));
+		ASTVarInit *var_init = new(mem) ASTVarInit(ASTVarInitType::STRUCT,struct_init);
+
+		return var_init;
+	}
+
+	ASTVarInit *parse_init(ASTType *type)
+	{
+		if(type->type_type == ASTDataType::STRUCT)
+		{
+			return parse_struct_init(type);
+		}
+		else if(type->type_type == ASTDataType::ARRAY)
+		{
+			return parse_array_init(type);
+		}
+		else
+		{
+			return parse_single_init(type);
+		}
+	}
 	/**
 	 * Parses a variable declaration.
 	 */
@@ -1686,70 +1805,15 @@ public:
 			ident = consume().string;
 		}
 
-		void *init = nullptr;
-		ASTVarInitType init_type;
+		ASTVarInit *var_init;
 
 		if (is_extern == false)
 		{
 			expect_symbol("=");
-
-			if(type->type_type == ASTDataType::STRUCT)
-			{
-				ASTStruct *Struct = (ASTStruct *)type->type;
-
-				void *mem = alloc(sizeof(ASTVarStructInit));
-				ASTVarStructInit *struct_init = new(mem)ASTVarStructInit();
-				init_type = ASTVarInitType::STRUCT;
-
-				std::string struct_name = consume().string;
-				if(Struct->ident != struct_name)
-				{
-					fatal("unmatching var declarsation with struct init");
-				}
-
-				struct_init->add_ident(struct_name);
-
-				expect_symbol(":");
-
-				while(true)
-				{
-					if(is_token(":"))
-					{
-						break;
-					}
-
-					expect_symbol(".");
-					if(match_identifier())
-					{
-						std::string member = consume().string;
-						expect_symbol("=");
-						ASTExpression *member_expr = parse_expr(0);
-						struct_init->add_member(member,member_expr);
-						expect_symbol(",");
-					}
-					else
-					{
-						fatal("expected an identifier in struct init(compound)");
-					}
-				}
-
-				init = struct_init;
-
-				expect_symbol(":");
-			}
-			else
-			{
-				void *mem = alloc(sizeof(ASTVarSingleInit));
-				ASTVarSingleInit *single_init = new(mem) ASTVarSingleInit(parse_expr(0));
-				init_type = ASTVarInitType::SINGLE;
-				init = single_init;
-			}
+			var_init = parse_init(type);
 		}
 
-		void *mem = alloc(sizeof(ASTVarInit));
-		ASTVarInit *var_init = new(mem) ASTVarInit(init_type,init);
-
-		mem = alloc(sizeof(ASTVarDecl));
+		void *mem = alloc(sizeof(ASTVarDecl));
 		ASTVarDecl *decl = new(mem) ASTVarDecl(type,ident,var_init,is_public,is_static,is_extern);
 
 		return decl;
@@ -2413,6 +2477,17 @@ public:
 
 					mem = alloc(sizeof(ASTExpression));
 					expr = new(mem) ASTExpression(ASTExpressionType::PTR_WRITE,expr2);
+				}
+				else if(ident == "offset")
+				{
+					expect_symbol("(");
+					void *mem = alloc(sizeof(ASTPtrOffsetExpr));
+					ASTPtrOffsetExpr *expr2 = new(mem) ASTPtrOffsetExpr(expr,parse_expr(0));
+	
+					expect_symbol(")");
+
+					mem = alloc(sizeof(ASTExpression));
+					expr = new(mem) ASTExpression(ASTExpressionType::PTR_OFFSET,expr2);
 				}
 				else
 				{

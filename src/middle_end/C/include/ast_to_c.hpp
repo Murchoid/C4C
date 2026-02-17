@@ -613,26 +613,44 @@ typedef void * void_ptr;
 		write_body(tab + "}\n");
 	}
 
-
-
-
-	void convert_vardecl_stmt(ASTVarDecl *stmt,std::string tab)
+	void convert_array_init(ASTVarInit *init,std::string tab)
 	{
-		write_body(tab);
+		ASTVarArrayInit *Array = (ASTVarArrayInit *)init->init;
+	
+		write_body("{");
 		
-		convert_type(stmt->type);
-
-		std::string new_line;
-		write_body(stmt->true_ident + " = ");
-
-		if(stmt->init->type == ASTVarInitType::SINGLE)
+		int i = 0;
+		int end = Array->elements.size() - 1;
+		for(ASTVarInit *tmp : Array->elements)
 		{
-			convert_expr(((ASTVarSingleInit *)stmt->init->init)->expr);
+			convert_init(tmp,tab);
+			if (i++ == end)
+			{
+				break;
+			}
+
+			write_body(",");
 		}
-		else if(stmt->init->type == ASTVarInitType::STRUCT)
+
+		write_body("}");
+	}
+
+
+	std::string convert_init(ASTVarInit *init,std::string tab)
+	{
+		std::string new_line;
+		if(init->type == ASTVarInitType::SINGLE)
 		{
-			ASTVarStructMember map = ((ASTVarStructInit *)stmt->init->init)->members;
-			write_body("(struct " + ((ASTVarStructInit *)stmt->init->init)->ident + "){\n");
+			convert_expr(((ASTVarSingleInit *)init->init)->expr);
+		}
+		else if(init->type == ASTVarInitType::ARRAY)
+		{
+			convert_array_init(init,tab);
+		}
+		else if(init->type == ASTVarInitType::STRUCT)
+		{
+			ASTVarStructMember map = ((ASTVarStructInit *)init->init)->members;
+			write_body("(struct " + ((ASTVarStructInit *)init->init)->ident + "){\n");
 			for (auto it = map.table.begin(); it != map.table.end(); ++it)
 			{
 				write_body(tab + "\t." + it->first + " = ");
@@ -642,6 +660,53 @@ typedef void * void_ptr;
 			write_body(tab + "}");
 			new_line = "\n";
 		}
+
+		return new_line;
+	}
+
+
+	void convert_vardecl_stmt(ASTVarDecl *stmt,std::string tab)
+	{
+		write_body(tab);
+		
+		std::vector<ASTExpression *> exprs;
+
+		if(stmt->type->type_type == ASTDataType::ARRAY)
+		{
+			ASTArray *Array = (ASTArray *)stmt->type->type;
+			exprs.push_back(Array->size);
+			while(true)
+			{
+				if(Array->type->type_type == ASTDataType::ARRAY)
+				{
+					Array = (ASTArray *)Array->type->type;
+					exprs.push_back(Array->size);
+				}
+				else
+				{
+					convert_type(Array->type);
+					break;
+				}
+			}
+		}
+		else
+		{
+			convert_type(stmt->type);
+		}
+
+		write_body(stmt->true_ident);
+
+		for(int i = exprs.size() - 1; i >= 0 ; i--)
+		{
+			ASTExpression *expr = exprs[i];
+			write_body("[");
+			convert_expr(expr);
+			write_body("]");
+		}
+
+		write_body(" = ");
+
+		std::string new_line = convert_init(stmt->init,tab);
 
 		
 		write_body(";\n" + new_line);
@@ -733,6 +798,13 @@ typedef void * void_ptr;
 			{
 				write_body("(");
 				convert_ptr_write_expr(expr->expr);
+				write_body(")");
+				break;
+			}
+			case ASTExpressionType::PTR_OFFSET:
+			{
+				write_body("(");
+				convert_ptr_offset_expr(expr->expr);
 				write_body(")");
 				break;
 			}
@@ -953,6 +1025,16 @@ typedef void * void_ptr;
 
 	}
 
+
+
+	void convert_ptr_offset_expr(void *expr)
+	{
+		ASTPtrOffsetExpr *ptr_write = (ASTPtrOffsetExpr *)expr;
+		convert_expr(ptr_write->expr);
+		write_body(" + ");
+		convert_expr(ptr_write->offset);
+
+	}
 
 
 	void convert_assign_expr(void *expr)

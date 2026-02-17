@@ -537,6 +537,11 @@ public:
 				value = convert_ptr_write_expr(expr->expr,expr->data_type);
 				break;
 			}
+			case ASTExpressionType::PTR_OFFSET:
+			{
+				value = convert_ptr_offset_expr(expr->expr,expr->data_type);
+				break;
+			}
 			case ASTExpressionType::ASSIGN:
 			{
 				value = convert_assign_expr(expr->expr,expr->data_type);
@@ -702,6 +707,40 @@ public:
 		tac_ret->add_type(convert_type(expr_type));
 
 		return tac_ret;
+	}
+
+
+	TACValue *convert_ptr_offset_expr(void *expr,ASTType *expr_type)
+	{
+		TACValue *tac_src1 = convert_expr(((ASTPtrOffsetExpr *)expr)->expr);
+		TACValue *tac_src2 = convert_expr(((ASTPtrOffsetExpr *)expr)->offset);
+		
+
+		TACType dst_type = convert_type(expr_type);
+
+		puts("after");
+
+		std::string tac_dst_ident = make_tmp2(expr_type);
+
+		void *mem = alloc(sizeof(TACVariable));
+		TACVariable *tac_var = new(mem) TACVariable(tac_dst_ident);
+		tac_var->add_type(dst_type);
+
+		mem = alloc(sizeof(TACValue));
+		TACValue *tac_dst = new(mem)TACValue(TACValueType::VARIABLE,tac_var);
+		tac_dst->add_type(tac_var->data_type);
+
+
+		TACBinaryOperator op =  TACBinaryOperator::ADD;
+
+		mem = alloc(sizeof(TACBinaryInst));
+		TACBinaryInst *tac_inst = new(mem) TACBinaryInst(tac_dst,tac_src1,op,tac_src2);
+		tac_inst->add_type(tac_dst->data_type);
+
+		mem = alloc(sizeof(TACInstruction));
+		this->inst->push_back(new(mem) TACInstruction(TACInstructionType::BINARY,tac_inst));
+
+		return tac_dst;
 	}
 
 

@@ -49,7 +49,9 @@ typedef void * void_ptr;
 
 i32 main()
 {
-	i32 a = 90;
-	i32 *b = &a;
-	return (*b = 78) + 7 + (*b = 50);
+	i32 age = 89;
+	i32 *ptr = &age;
+	(ptr + 1);
+	(ptr + 2);
+	return (*ptr);
 }

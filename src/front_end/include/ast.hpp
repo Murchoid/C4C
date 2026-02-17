@@ -312,6 +312,7 @@ enum class ASTDataType
 	VARIANT,
 	ENUM,
 	FUNCTION,
+	ARRAY,
 };
 
 
@@ -361,8 +362,8 @@ class ASTArray
 {
 public:
 	ASTType *type;
-	long size = 0;
-	ASTArray(ASTType *type,long size)
+	ASTExpression *size = 0;
+	ASTArray(ASTType *type,ASTExpression *size)
 	{
 		this->type = type;
 		this->size = size;
@@ -404,49 +405,6 @@ public:
 	}
 };
 
-/*
-
-class ASTType
-{
-public:
-	ASTDataType type;
-	std::string ident;
-	int ptr;
-	std::vector<ASTExpression *> array;
-	//ASTBox box;
-	ASTType()
-	{
-		this->ptr = 0;
-	}
-
-	inline void add_type(ASTDataType type)
-	{
-		this->type = type;
-	}
-	
-	inline void add_ptr(int ptr)
-	{
-		this->ptr += ptr;
-	}
-
-	inline void add_array(ASTExpression *array)
-	{
-		this->array.push_back(array);
-	}
-
-	void add_ident(std::string ident)
-	{
-		this->ident = ident;
-	}
-
-	~ASTType()
-	{
-		this->array.~vector();
-	}
-
-};
-
-*/
 
 class ASTFunctionArgument
 {
@@ -594,6 +552,27 @@ public:
 };
 
 
+enum class ASTVarInitType
+{
+	SINGLE,
+	ARRAY,
+	STRUCT,
+};
+
+
+class ASTVarInit
+{
+public:
+	ASTVarInitType type;
+	void *init;
+
+	ASTVarInit(ASTVarInitType type,void *init)
+	{
+		this->type = type;
+		this->init = init;
+	}
+};
+
 class ASTVarSingleInit
 {
 public:
@@ -602,6 +581,18 @@ public:
 	ASTVarSingleInit(ASTExpression *expr)
 	{
 		this->expr = expr;
+	}
+};
+
+
+class ASTVarArrayInit
+{
+public:
+	std::vector<ASTVarInit *> elements;
+
+	void add_element(ASTVarInit *element)
+	{
+		this->elements.push_back(element);
 	}
 };
 
@@ -654,25 +645,7 @@ public:
 };
 
 
-enum class ASTVarInitType
-{
-	SINGLE,
-	STRUCT,
-};
 
-
-class ASTVarInit
-{
-public:
-	ASTVarInitType type;
-	void *init;
-
-	ASTVarInit(ASTVarInitType type,void *init)
-	{
-		this->type = type;
-		this->init = init;
-	}
-};
 
 
 
@@ -925,6 +898,7 @@ enum class ASTExpressionType
 	ADDRESS_OF,
 	PTR_READ,
 	PTR_WRITE,
+	PTR_OFFSET,
 	ARRAY,
 	ENUM_ACCESS,
 	STRUCT_ACCESS,
@@ -1048,6 +1022,28 @@ public:
 	{
 		this->expr = expr;
 		this->data = data;
+	}
+};
+
+
+
+
+class ASTPtrOffsetExpr
+{
+public:
+	ASTExpression *expr;
+	ASTExpression *offset;
+	ASTType *data_type;
+
+	void add_data_type(ASTType *data_type)
+	{
+		this->data_type = data_type;
+	}
+
+	ASTPtrOffsetExpr(ASTExpression *expr,ASTExpression *offset)
+	{
+		this->expr = expr;
+		this->offset = offset;
 	}
 };
 

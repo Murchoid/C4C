@@ -554,6 +554,33 @@ public:
     }
 
 
+    void check_array_init(ASTVarInit *init,SymbolTable *symbol_table)
+    {
+        
+    }
+
+    void check_init(ASTVarInit *init,SymbolTable *symbol_table)
+    {
+        if(init->type == ASTVarInitType::SINGLE)
+        {
+            check_expr(((ASTVarSingleInit *)init->init)->expr,symbol_table);
+        }
+        else if(init->type == ASTVarInitType::STRUCT)
+        {
+            ASTVarStructMember map = ((ASTVarStructInit *)init->init)->members;
+            
+            for (auto it = map.table.begin(); it != map.table.end(); ++it)
+            {
+                check_expr(it->second,symbol_table);
+            }
+            
+        }
+        else if(init->type == ASTVarInitType::ARRAY)
+        {
+
+        }
+    }
+
     void check_vardecl_stmt(ASTVarDecl *decl,SymbolTable *symbol_table)
     {
         if (not check_type(decl->type))
@@ -617,20 +644,7 @@ public:
 
             if (decl->init != nullptr)
             {
-                if(decl->init->type == ASTVarInitType::SINGLE)
-                {
-                    check_expr(((ASTVarSingleInit *)decl->init->init)->expr,symbol_table);
-                }
-                else if(decl->init->type == ASTVarInitType::STRUCT)
-                {
-                    ASTVarStructMember map = ((ASTVarStructInit *)decl->init->init)->members;
-                    
-                    for (auto it = map.table.begin(); it != map.table.end(); ++it)
-                    {
-                        check_expr(it->second,symbol_table);
-                    }
-                    
-                }
+                
             }
         }
 
@@ -1389,6 +1403,28 @@ public:
 
                 ASTPointer *ptr = (ASTPointer *)write->expr->data_type->type;
                 write->add_data_type((ASTType *)ptr->type);
+                expr->add_data_type(write->data_type);
+                break;
+            }
+            case ASTExpressionType::PTR_OFFSET:
+            {
+                ASTPtrOffsetExpr *write = (ASTPtrOffsetExpr *)expr->expr;
+                check_expr(write->expr,symbol_table);
+                check_expr(write->offset,symbol_table);
+
+                write->offset->type = ASTExpressionType::I64;
+                ASTI32Expr *i32_expr = (ASTI32Expr *)write->offset->expr;
+                i32_expr->add_data_type(build_builtin(ASTDataType::I64));
+                write->offset->add_data_type(build_builtin(ASTDataType::I64));
+                //write->add_data_type(build_builtin(ASTDataType::I64));
+
+                if(write->expr->data_type->type_type != ASTDataType::POINTER)
+                {
+                    fatal("trying to do pointer arithmetic on a non-pointer type is invalid");
+                }
+
+                ASTPointer *ptr = (ASTPointer *)write->expr->data_type->type;
+                write->add_data_type(write->expr->data_type);
                 expr->add_data_type(write->data_type);
                 break;
             }

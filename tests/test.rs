@@ -127,7 +127,12 @@ fn main()->i32:
 
 
 pub fn main()->i32:
-    i32 a = 90
-    i32 *b = &a
-    return b@write(78) + 7 + b@write(50)
+    //i32 [5][90]grades = [[78,90,65],[76,90,65]] 
+
+    i32 age = 89
+    i32 *ptr = &age
+    ptr@offset(1)
+    ptr@offset(-1)
+
+    return ptr@read()
 :
